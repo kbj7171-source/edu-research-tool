@@ -179,6 +179,51 @@
         </div>
       </div>
 
+      <div class="row">
+        <div>
+          <label class="field" for="period">정보 기준 기간</label>
+          <select id="period">
+            <option value="any" selected>제한 없음</option>
+            <option value="6m">최근 6개월</option>
+            <option value="1y">최근 1년</option>
+            <option value="2y">최근 2년</option>
+          </select>
+        </div>
+        <div>
+          <label class="field" for="size">회사 규모·유형</label>
+          <select id="size">
+            <option value="any" selected>전체</option>
+            <option value="large">대기업</option>
+            <option value="mid">중견·중소기업</option>
+            <option value="public">공공·공기업</option>
+            <option value="startup">스타트업</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="row">
+        <div>
+          <label class="field" for="level">교육 대상 직급</label>
+          <select id="level">
+            <option value="any" selected>무관 / 전체</option>
+            <option value="new">신입</option>
+            <option value="staff">실무자</option>
+            <option value="manager">관리자</option>
+            <option value="exec">임원</option>
+          </select>
+        </div>
+        <div>
+          <label class="field" for="scale">교육 규모</label>
+          <select id="scale">
+            <option value="any" selected>미지정</option>
+            <option value="small">소규모 워크숍(~20명)</option>
+            <option value="team">팀 단위(~50명)</option>
+            <option value="dept">부서·본부 단위</option>
+            <option value="company">전사 대상</option>
+          </select>
+        </div>
+      </div>
+
       <button id="run">조사하기</button>
       <div id="status"></div>
       <div class="hint">웹 검색을 사용하므로 10~40초 걸릴 수 있어요.</div>
@@ -203,6 +248,7 @@
     const $ = (id) => document.getElementById(id);
     const apiKeyEl = $("apiKey"), topicEl = $("topic"), industryEl = $("industry");
     const scopeEl = $("scope"), depthEl = $("depth"), outtypeEl = $("outtype");
+    const periodEl = $("period"), sizeEl = $("size"), levelEl = $("level"), scaleEl = $("scale");
     const reportEl = $("report"), sourcesEl = $("sources"), statusEl = $("status"), printHeadEl = $("printHead");
     const runBtn = $("run"), copyBtn = $("copy"), printBtn = $("print"), checksEl = $("checks");
 
@@ -259,6 +305,7 @@
       { id: "kpi",        label: "성과 측정 방법(KPI)",      text: "성과 측정 방법 — 교육 효과를 어떻게 측정·평가할지(KPI 예시)", def: false },
       { id: "provider",   label: "추천 강사·교육기관",       text: "추천 강사 유형·교육기관 — 확인된 곳만, 출처와 함께", def: false },
       { id: "news",       label: "참고할 뉴스기사(올해)",     text: "참고할 만한 관련 뉴스기사 — 올해 발행된 것만", def: false },
+      { id: "timeline",   label: "단계별 일정(타임라인)",     text: "단계별 추진 일정 — 준비/실행/사후 단계와 시점", def: false },
       { id: "todo",       label: "내가 할 일(기획 실행 순서)", text: "교육 기획 담당자가 이 교육을 준비·운영하기 위해 해야 할 업무 (먼저 할 일부터 순서대로)", def: true },
     ];
 
@@ -285,6 +332,11 @@
       meeting: "회의 공유용 한 장 요약. 아주 짧게, 핵심 불릿만.",
       research: "상세 리서치 리포트. 근거와 사례를 풍부하게 담아 깊이 있게.",
     };
+    // 검색 조건(필터) — "any"가 아닐 때만 프롬프트에 반영
+    const PERIOD_TEXT = { "6m": "최근 6개월", "1y": "최근 1년", "2y": "최근 2년" };
+    const SIZE_TEXT = { large: "대기업", mid: "중견·중소기업", public: "공공·공기업", startup: "스타트업" };
+    const LEVEL_TEXT = { new: "신입", staff: "실무자", manager: "관리자", exec: "임원" };
+    const SCALE_TEXT = { small: "소규모 워크숍(약 20명)", team: "팀 단위(약 50명)", dept: "부서·본부 단위", company: "전사 대상" };
 
     function buildPrompt(topic, industry) {
       const chosen = checkboxes().filter((c) => c.checked).map((c) => c.dataset.id);
@@ -316,6 +368,19 @@
 - '참고할 뉴스기사' 항목은 ${YEAR}년에 발행된 기사만 넣어줘. ${YEAR}년이 아닌 기사는 절대 넣지 마.
 - 각 기사는 "- 기사 제목 — 매체명, 발행일" 형태의 불릿으로 써줘. URL/링크는 본문에 쓰지 마(실제 링크는 아래 '검색 출처'에 자동 표시됨).
 - 검색으로 실제 확인한 ${YEAR}년 기사만 넣고, 없으면 "확인 안 됨"이라고만 써줘.` : "";
+      // 단계별 일정은 표로 받는다
+      const timelineRule = chosen.includes("timeline") ? `
+- '단계별 일정(타임라인)' 항목은 불릿 대신 아래 표로, 준비 → 실행 → 사후 순서로 써줘.
+| 단계 | 주요 활동 | 기간/시점 |
+| --- | --- | --- |
+| 준비 | 니즈 조사·커리큘럼 확정 | D-4주 |` : "";
+      // 드롭다운으로 고른 검색 조건을 한 덩어리로 (선택 안 한 건 빠짐)
+      const filters = [];
+      if (PERIOD_TEXT[periodEl.value]) filters.push(`트렌드·사례·뉴스는 ${PERIOD_TEXT[periodEl.value]} 이내 정보 위주로.`);
+      if (SIZE_TEXT[sizeEl.value]) filters.push(`사례는 ${SIZE_TEXT[sizeEl.value]} 위주로.`);
+      if (LEVEL_TEXT[levelEl.value]) filters.push(`교육 대상은 ${LEVEL_TEXT[levelEl.value]} 기준으로 맞춰서.`);
+      if (SCALE_TEXT[scaleEl.value]) filters.push(`교육 규모는 ${SCALE_TEXT[scaleEl.value]} 기준으로.`);
+      const filterBlock = filters.length ? `\n추가 조건:\n- ${filters.join("\n- ")}` : "";
       return `너는 기업 교육 기획을 돕는 리서처야. 조사 주제: '${topic}'.${ctx}
 웹 검색으로 최신 정보를 확인한 뒤, 아래 항목을 조사해서 보고서로 정리해줘.
 
@@ -323,7 +388,7 @@ ${lines}
 
 출력 타입: ${OUTTYPE_TEXT[outtypeEl.value]}
 조사 범위: ${SCOPE_TEXT[scopeEl.value]}
-분량: ${DEPTH_TEXT[depthEl.value]}
+분량: ${DEPTH_TEXT[depthEl.value]}${filterBlock}
 
 [출력 형식 — 반드시 지킬 것]
 - 모든 내용은 짧은 불릿("- ")으로만. 줄글 문단은 절대 쓰지 마.
@@ -332,7 +397,7 @@ ${lines}
 - 각 조사 항목은 "## 1. 제목" 소제목 + 그 아래 불릿 ${depthEl.value === "brief" ? "2~3" : depthEl.value === "detailed" ? "5~8" : "3~5"}개.
 - 핵심 단어만 **굵게**.
 - 근거 있는 불릿은 끝에 (출처: 매체명).
-- 본문에는 URL·링크를 직접 쓰지 마. 지어낸 주소는 깨질 수 있어. 실제 링크는 시스템이 '검색 출처'로 따로 보여줘.${curriculumRule}${newsRule}${chartRule}${todoRule}
+- 본문에는 URL·링크를 직접 쓰지 마. 지어낸 주소는 깨질 수 있어. 실제 링크는 시스템이 '검색 출처'로 따로 보여줘.${curriculumRule}${newsRule}${timelineRule}${chartRule}${todoRule}
 
 [정확성 규칙]
 - 확인되지 않은 회사 사례나 수치는 지어내지 말고 "확인 안 됨"이라고 표시해.`;
