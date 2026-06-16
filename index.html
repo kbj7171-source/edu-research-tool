@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>교육 기획 근거 도우미 — Gemini 검색 조사</title>
+  <style>
+    /* 비개발자가 봐도 부담 없도록 색·여백을 단순하게 유지 */
+    :root { --line: #d9d4c7; --accent: #b5562f; --bg: #f4f1ea; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; padding: 24px;
+      background: var(--bg);
+      font-family: "Malgun Gothic", "맑은 고딕", system-ui, sans-serif;
+      color: #2b2b2b; line-height: 1.6;
+    }
+    .wrap { max-width: 760px; margin: 0 auto; }
+    h1 { font-size: 22px; margin: 0 0 4px; }
+    .sub { color: #7a746a; font-size: 14px; margin: 0 0 20px; }
+    .card {
+      background: #fff; border: 1px solid var(--line); border-radius: 12px;
+      padding: 20px; margin-bottom: 16px;
+    }
+    label.field { display: block; font-weight: 600; font-size: 14px; margin: 12px 0 6px; }
+    input[type="text"], input[type="password"], select {
+      width: 100%; padding: 10px 12px; font-size: 15px;
+      border: 1px solid var(--line); border-radius: 8px; font-family: inherit;
+      background: #fffdf8;
+    }
+    .row { display: flex; gap: 12px; }
+    .row > div { flex: 1; }
+    button {
+      margin-top: 16px; padding: 12px 20px; font-size: 15px; font-weight: 600;
+      color: #fff; background: var(--accent); border: none; border-radius: 8px; cursor: pointer;
+    }
+    button:disabled { background: #b9b3a7; cursor: not-allowed; }
+    button.ghost { background: #fff; color: var(--accent); border: 1px solid var(--accent); }
+    .hint { font-size: 12px; color: #8a847a; margin-top: 6px; }
+    .warn {
+      font-size: 12px; color: #8a5a2b; background: #fbf3e7;
+      border: 1px solid #ecd9bf; border-radius: 8px; padding: 8px 10px; margin-top: 8px;
+    }
+    .checks { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; margin-top: 8px; }
+    .checks label { display: flex; gap: 8px; align-items: flex-start; font-size: 14px; font-weight: 400; cursor: pointer; }
+    .checks input { margin-top: 4px; }
+    .toolbar { font-size: 13px; margin-top: 6px; }
+    .toolbar a { color: var(--accent); cursor: pointer; text-decoration: underline; margin-right: 10px; }
+    #status { font-size: 13px; color: #7a746a; margin-top: 8px; min-height: 18px; }
+    .muted { color: #9a948a; }
+
+    /* --- 보고서: 웹 대시보드처럼 카드(칸)로 분리 --- */
+    #report {
+      font-size: 15px; color: #2b2b2b;
+      display: grid; grid-template-columns: 1fr;
+      gap: 14px; align-items: start;
+    }
+    /* 각 섹션·그래프를 하나의 카드로 */
+    #report > .sec, #report > .chart {
+      background: #fff; border: 1px solid var(--line); border-radius: 10px;
+      padding: 16px; margin: 0; box-shadow: 0 1px 3px rgba(0, 0, 0, .04);
+    }
+    #report .sec > h3 {
+      font-size: 15px; font-weight: 700; color: var(--accent);
+      margin: 0 0 10px; padding-bottom: 8px; border-bottom: 1px solid #eee4d3;
+    }
+    /* 요약·그래프는 한 줄 전체 폭으로 강조 */
+    #report .sec.summary { grid-column: 1 / -1; background: #faf6ee; border-left: 4px solid var(--accent); }
+    #report > .chart { grid-column: 1 / -1; }
+    #report h4 { font-size: 14px; margin: 12px 0 4px; }
+    #report ul { margin: 0; padding-left: 4px; list-style: none; }
+    #report ul li { position: relative; padding-left: 16px; margin: 6px 0; }
+    #report ul li::before {
+      content: ""; position: absolute; left: 2px; top: 9px;
+      width: 5px; height: 5px; border-radius: 50%; background: var(--accent);
+    }
+    #report ol { margin: 0; padding-left: 20px; }
+    #report ol li { margin: 6px 0; }
+    #report p { margin: 7px 0; }
+    #report a { color: var(--accent); }
+    #report strong { font-weight: 700; }
+    /* 커리큘럼 등 표 형태 */
+    #report table.tbl { width: 100%; border-collapse: collapse; margin: 4px 0; font-size: 13.5px; }
+    #report table.tbl th, #report table.tbl td { border: 1px solid #e7e0d2; padding: 6px 8px; text-align: left; vertical-align: top; }
+    #report table.tbl thead th { background: #f6efe2; font-weight: 700; }
+
+    /* 가독성 보조용 간단 막대 그래프 (제안 시간 배분) */
+    #report .chart .chart-title { font-weight: 700; color: var(--accent); margin-bottom: 10px; }
+    .bar-row { display: flex; align-items: center; gap: 8px; margin: 5px 0; font-size: 13px; }
+    .bar-label { flex: 0 0 140px; }
+    .bar { flex: 1; background: #efe9dd; border-radius: 6px; height: 14px; overflow: hidden; }
+    .bar > span { display: block; height: 100%; background: var(--accent); }
+    .bar-val { flex: 0 0 52px; text-align: right; color: #7a746a; }
+
+    #sources { margin-top: 16px; font-size: 13px; border-top: 1px dashed var(--line); padding-top: 12px; }
+    #sources a { color: var(--accent); }
+
+    /* 인쇄 헤더는 화면에선 숨기고 인쇄할 때만 보이게 */
+    #printHead { display: none; }
+
+    /* --- 인쇄/PDF 저장: 입력 영역은 빼고 보고서만 깔끔하게 --- */
+    @media print {
+      body { background: #fff; padding: 0; }
+      .no-print { display: none !important; }
+      .card { border: none; border-radius: 0; padding: 0; margin: 0; }
+      #printHead { display: block; margin-bottom: 16px; }
+      #printHead h2 { margin: 0; font-size: 20px; }
+      #printHead .meta { color: #666; font-size: 13px; }
+      /* 인쇄는 카드 그리드 대신 한 줄로 쌓아 깔끔하게 */
+      #report { display: block; }
+      #report > .sec, #report > .chart {
+        box-shadow: none; margin-bottom: 12px; break-inside: avoid;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1 class="no-print">교육 기획 근거 도우미 — Gemini 검색 조사</h1>
+    <p class="sub no-print">조사할 항목·범위·분량을 골라서, 내 Gemini가 웹 검색으로 정리합니다.</p>
+
+    <!-- API 키: 코드에 박지 않고 사용자가 직접 입력 → 브라우저 안에만 보관 -->
+    <div class="card no-print">
+      <label class="field" for="apiKey">Gemini API 키</label>
+      <input type="password" id="apiKey" placeholder="AIza..." autocomplete="off" />
+      <div class="warn">
+        Google AI Studio(aistudio.google.com)에서 무료 발급. 키는 이 브라우저에만 저장되며
+        우리 서버로 전송되지 않습니다. 이 파일을 인터넷에 올리거나 공유하지 마세요.
+      </div>
+    </div>
+
+    <div class="card no-print">
+      <div class="row">
+        <div>
+          <label class="field" for="topic">교육 주제 키워드</label>
+          <input type="text" id="topic" placeholder="예: 현업 대상 AI 활용" />
+        </div>
+        <div>
+          <label class="field" for="industry">우리 회사 업종/맥락 (선택)</label>
+          <input type="text" id="industry" placeholder="예: 출판/미디어, 대기업" />
+        </div>
+      </div>
+    </div>
+
+    <!-- 사용자가 필요에 맞게 조사 범위를 고르는 칸 -->
+    <div class="card no-print">
+      <label class="field">조사할 항목 (필요한 것만 체크)</label>
+      <div class="checks" id="checks"></div>
+      <div class="toolbar">
+        <a id="selectAll">전체 선택</a><a id="selectNone">전체 해제</a>
+      </div>
+
+      <div class="row">
+        <div>
+          <label class="field" for="outtype">출력 타입 (용도)</label>
+          <select id="outtype">
+            <option value="exec" selected>경영진 보고용 (핵심·근거 중심)</option>
+            <option value="plan">실무 기획안 (실행 디테일 중심)</option>
+            <option value="meeting">회의 공유용 한 장 요약</option>
+            <option value="research">상세 리서치 리포트</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="row">
+        <div>
+          <label class="field" for="scope">조사 범위</label>
+          <select id="scope">
+            <option value="domestic">국내 중심</option>
+            <option value="global">국내 + 해외 참고</option>
+          </select>
+        </div>
+        <div>
+          <label class="field" for="depth">결과 분량</label>
+          <select id="depth">
+            <option value="brief">간단 요약</option>
+            <option value="standard" selected>표준</option>
+            <option value="detailed">자세히</option>
+          </select>
+        </div>
+      </div>
+
+      <button id="run">조사하기</button>
+      <div id="status"></div>
+      <div class="hint">웹 검색을 사용하므로 10~40초 걸릴 수 있어요.</div>
+    </div>
+
+    <div class="card">
+      <!-- 인쇄할 때만 보이는 표지 -->
+      <div id="printHead"></div>
+
+      <label class="field no-print">결과</label>
+      <div id="report"><span class="muted">아직 결과가 없습니다.</span></div>
+      <div id="sources"></div>
+
+      <div class="no-print">
+        <button id="copy" class="ghost" style="display:none;">복사하기</button>
+        <button id="print" class="ghost" style="display:none;">인쇄 / PDF 저장</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const apiKeyEl = $("apiKey"), topicEl = $("topic"), industryEl = $("industry");
+    const scopeEl = $("scope"), depthEl = $("depth"), outtypeEl = $("outtype");
+    const reportEl = $("report"), sourcesEl = $("sources"), statusEl = $("status"), printHeadEl = $("printHead");
+    const runBtn = $("run"), copyBtn = $("copy"), printBtn = $("print"), checksEl = $("checks");
+
+    apiKeyEl.value = localStorage.getItem("gemini_api_key") || "";
+    apiKeyEl.addEventListener("change", () =>
+      localStorage.setItem("gemini_api_key", apiKeyEl.value.trim())
+    );
+
+    // 혼잡(과부하) 시 순서대로 시도할 모델 목록. 이름이 바뀌면 여기만 고치면 됩니다.
+    const MODELS = ["gemini-2.5-flash", "gemini-2.0-flash"];
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+    async function callGemini(model, apiKey, prompt) {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          tools: [{ google_search: {} }],
+        }),
+      });
+      if (!res.ok) {
+        let detail = `HTTP ${res.status}`;
+        try { detail = (await res.json()).error?.message || detail; } catch (_) {}
+        const e = new Error(detail);
+        // 과부하·혼잡·요청량 초과는 잠시 후 재시도하면 풀리는 일시적 오류
+        e.retryable = res.status === 429 || res.status === 503 ||
+          /high demand|overload|unavailable|try again/i.test(detail);
+        throw e;
+      }
+      return res.json();
+    }
+
+    // Gemini 응답에서 본문 텍스트와 검색 출처(실제 링크)를 뽑는다
+    function extractGemini(data) {
+      const cand = (data.candidates || [])[0];
+      const text = ((cand && cand.content && cand.content.parts) || [])
+        .map((p) => p.text).filter(Boolean).join("\n").trim();
+      const chunks = (cand && cand.groundingMetadata && cand.groundingMetadata.groundingChunks) || [];
+      const cites = chunks.map((c) => c.web).filter(Boolean).map((w) => ({ uri: w.uri, title: w.title || w.uri }));
+      return { text, cites };
+    }
+
+    const ITEMS = [
+      { id: "trend",      label: "요즘 교육 트렌드",        text: "요즘 교육 트렌드 — 이 주제와 관련해 최근 뜨고 있는 흐름", def: true },
+      { id: "cases",      label: "국내 대기업·타사 사례",    text: "국내 대기업·타사 사례 — 어떤 기업이 이 주제로 어떤 교육을 운영하는지 (회사명과 함께)", def: true },
+      { id: "curriculum", label: "대표 커리큘럼 구성",       text: "대표 커리큘럼 구성 — 보통 어떤 모듈·차시로 짜는지 (예시 목차)", def: true },
+      { id: "prep",       label: "진행 준비물·전제·고려사항", text: "이 교육을 진행하려면 — 준비물·전제·고려사항", def: true },
+      { id: "audience",   label: "예상 수강 대상",          text: "예상 수강 대상 — 직무·직급·사전지식 수준 등 누가 들으면 좋은지", def: true },
+      { id: "time",       label: "예상 교육 시간·차시",      text: "예상 교육 시간 — 총 소요 시간과 차시 구성(예: 2시간 1회 / 3시간 2회)", def: true },
+      { id: "cost",       label: "예상 비용·예산 수준",      text: "예상 비용·예산 수준 — 사내 진행 vs 외부 위탁의 대략적 비용감", def: false },
+      { id: "format",     label: "추천 교육 형식",          text: "추천 교육 형식 — 온라인/오프라인/혼합, 강의 vs 실습 비중", def: false },
+      { id: "kpi",        label: "성과 측정 방법(KPI)",      text: "성과 측정 방법 — 교육 효과를 어떻게 측정·평가할지(KPI 예시)", def: false },
+      { id: "provider",   label: "추천 강사·교육기관",       text: "추천 강사 유형·교육기관 — 확인된 곳만, 출처와 함께", def: false },
+      { id: "news",       label: "참고할 뉴스기사(올해)",     text: "참고할 만한 관련 뉴스기사 — 올해 발행된 것만", def: false },
+      { id: "todo",       label: "내가 할 일(기획 실행 순서)", text: "교육 기획 담당자가 이 교육을 준비·운영하기 위해 해야 할 업무 (먼저 할 일부터 순서대로)", def: true },
+    ];
+
+    checksEl.innerHTML = ITEMS.map((it) => `
+      <label><input type="checkbox" data-id="${it.id}" ${it.def ? "checked" : ""}/> ${it.label}</label>
+    `).join("");
+
+    const checkboxes = () => Array.from(checksEl.querySelectorAll("input[type=checkbox]"));
+    $("selectAll").addEventListener("click", () => checkboxes().forEach((c) => (c.checked = true)));
+    $("selectNone").addEventListener("click", () => checkboxes().forEach((c) => (c.checked = false)));
+
+    const SCOPE_TEXT = {
+      domestic: "국내 사례 위주로 조사해줘.",
+      global: "국내 사례를 중심으로 하되, 참고할 만한 해외 사례도 함께 포함해줘.",
+    };
+    const DEPTH_TEXT = {
+      brief: "각 항목 불릿 2~3개로 매우 짧게.",
+      standard: "각 항목 불릿 3~5개로.",
+      detailed: "각 항목 불릿 5~8개로, 핵심만 빠짐없이.",
+    };
+    const OUTTYPE_TEXT = {
+      exec: "경영진 보고용. 3분 안에 의사결정할 수 있게 핵심 결론·근거·제안 위주로, 군더더기 없이.",
+      plan: "실무 기획안. 바로 실행할 수 있게 커리큘럼·일정·역할·준비물 등 구체적 실행 정보 위주로.",
+      meeting: "회의 공유용 한 장 요약. 아주 짧게, 핵심 불릿만.",
+      research: "상세 리서치 리포트. 근거와 사례를 풍부하게 담아 깊이 있게.",
+    };
+
+    function buildPrompt(topic, industry) {
+      const chosen = checkboxes().filter((c) => c.checked).map((c) => c.dataset.id);
+      const lines = ITEMS.filter((it) => chosen.includes(it.id))
+        .map((it, i) => `${i + 1}. ${it.text}`).join("\n");
+      const ctx = industry ? `\n우리 회사 맥락은 '${industry}'야.` : "";
+      // 시간 항목을 골랐을 때만, 제안 시간 배분을 막대그래프용 코드블록으로 받는다
+      const chartRule = chosen.includes("time") ? `
+- '예상 교육 시간·차시' 항목에서는, 네가 제안하는 시간 배분을 아래 형식의 코드블록으로 딱 한 번 넣어줘. (웹에서 찾은 사실이 아니라 너의 제안임. 라벨: 분 단위 숫자만)
+\`\`\`시간배분
+도입·이론: 30
+실습 1: 60
+실습 2: 60
+정리·Q&A: 30
+\`\`\`` : "";
+      // 실행 순서 항목은 시간 순서가 중요하므로 번호 목록으로 받는다
+      const todoRule = chosen.includes("todo") ? `
+- '내가 할 일(기획 실행 순서)' 항목만은 불릿("-") 대신 "1. 2. 3." 번호 목록으로, 가장 먼저 할 일부터 순서대로 단계별로 써줘. 각 단계도 한 줄로 짧게.` : "";
+      // 커리큘럼은 모듈별 4열 표로 구체화해서 받는다
+      const curriculumRule = chosen.includes("curriculum") ? `
+- '대표 커리큘럼 구성' 항목은 불릿 대신 아래 마크다운 표로 써줘. 모듈마다 한 줄씩.
+| 모듈명 | 모듈 내용 | 교육 형태 | 시간 |
+| --- | --- | --- | --- |
+| AI 기초 이해 | 생성형 AI 개념과 업무 활용 사례 | 강의 | 30분 |
+교육 형태는 강의 / 실습 / 워크숍 / 토론 중에서 골라 적고, 시간은 분 또는 시간 단위로 적어줘.` : "";
+      // 뉴스기사는 올해 발행분만, 링크와 함께 받는다
+      const YEAR = new Date().getFullYear();
+      const newsRule = chosen.includes("news") ? `
+- '참고할 뉴스기사' 항목은 ${YEAR}년에 발행된 기사만 넣어줘. ${YEAR}년이 아닌 기사는 절대 넣지 마.
+- 각 기사는 "- 기사 제목 — 매체명, 발행일" 형태의 불릿으로 써줘. URL/링크는 본문에 쓰지 마(실제 링크는 아래 '검색 출처'에 자동 표시됨).
+- 검색으로 실제 확인한 ${YEAR}년 기사만 넣고, 없으면 "확인 안 됨"이라고만 써줘.` : "";
+      return `너는 기업 교육 기획을 돕는 리서처야. 조사 주제: '${topic}'.${ctx}
+웹 검색으로 최신 정보를 확인한 뒤, 아래 항목을 조사해서 보고서로 정리해줘.
+
+${lines}
+
+출력 타입: ${OUTTYPE_TEXT[outtypeEl.value]}
+조사 범위: ${SCOPE_TEXT[scopeEl.value]}
+분량: ${DEPTH_TEXT[depthEl.value]}
+
+[출력 형식 — 반드시 지킬 것]
+- 모든 내용은 짧은 불릿("- ")으로만. 줄글 문단은 절대 쓰지 마.
+- 한 불릿 = 한 줄(40자 이내), 한 가지 정보만. 문장은 "~함/~임/~필요" 같은 간결한 명사형으로 끝내.
+- 맨 위 "## 한눈에 보기": 핵심을 정확히 3개 불릿으로, 각 한 줄.
+- 각 조사 항목은 "## 1. 제목" 소제목 + 그 아래 불릿 ${depthEl.value === "brief" ? "2~3" : depthEl.value === "detailed" ? "5~8" : "3~5"}개.
+- 핵심 단어만 **굵게**.
+- 근거 있는 불릿은 끝에 (출처: 매체명).
+- 본문에는 URL·링크를 직접 쓰지 마. 지어낸 주소는 깨질 수 있어. 실제 링크는 시스템이 '검색 출처'로 따로 보여줘.${curriculumRule}${newsRule}${chartRule}${todoRule}
+
+[정확성 규칙]
+- 확인되지 않은 회사 사례나 수치는 지어내지 말고 "확인 안 됨"이라고 표시해.`;
+    }
+
+    // --- 마크다운 → 보고서 HTML 변환 (제목/불릿/굵게/구분선만 처리) ---
+    function escapeHtml(s) {
+      return s.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+    }
+    function inline(s) {
+      return s
+        .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+        // 모델이 쓴 링크는 없는 페이지일 때가 많아 클릭 링크로 만들지 않고 제목 텍스트만 남긴다.
+        // 실제 클릭 가능한 링크는 아래 '검색 출처'(구글이 반환한 검증된 URL)에서만 제공한다.
+        .replace(/\[(.+?)\]\((https?:\/\/[^\s)]+)\)/g, "$1");
+    }
+    // 뉴스 제목을 클릭하면 그 제목으로 구글 검색 → 실제 기사로 연결(없는 URL 위험 없음)
+    function newsItem(t) {
+      const i = t.search(/\s[—–-]\s/); // "제목 — 매체명, 날짜"에서 제목만 분리
+      const title = i > 0 ? t.slice(0, i) : t;
+      const rest = i > 0 ? t.slice(i) : "";
+      const q = encodeURIComponent(title.replace(/&amp;/g, "&").trim());
+      return `<a href="https://www.google.com/search?q=${q}" target="_blank" rel="noopener">${inline(title)}</a>${inline(rest)}`;
+    }
+    // 제안 시간 배분 코드블록을 막대그래프 HTML로 변환
+    function renderChart(raw) {
+      const rows = raw.trim().split(/\r?\n/).map((l) => {
+        const m = l.match(/^\s*-?\s*(.+?)\s*[:：]\s*(\d+)/);
+        return m ? { label: m[1].trim(), val: +m[2] } : null;
+      }).filter(Boolean);
+      if (!rows.length) return "";
+      const max = Math.max(...rows.map((r) => r.val));
+      const bars = rows.map((r) =>
+        `<div class="bar-row"><span class="bar-label">${escapeHtml(r.label)}</span>` +
+        `<span class="bar"><span style="width:${Math.round((r.val / max) * 100)}%"></span></span>` +
+        `<span class="bar-val">${r.val}분</span></div>`
+      ).join("");
+      return `<div class="chart"><div class="chart-title">⏱️ 제안 시간 배분</div>${bars}</div>`;
+    }
+    function renderMarkdown(md) {
+      const lines = escapeHtml(md).split(/\r?\n/);
+      let html = "", listType = null, inSection = false, secIndex = 0, tbl = [], inNews = false;
+      const closeList = () => { if (listType) { html += `</${listType}>`; listType = null; } };
+      const cells = (row) => row.replace(/^\||\|$/g, "").split("|").map((c) => c.trim());
+      const isSep = (row) => cells(row).every((c) => /^:?-{2,}:?$/.test(c));
+      // 모아둔 표 행들을 <table>로 변환
+      const flushTable = () => {
+        if (!tbl.length) return;
+        let header = null, body = tbl;
+        if (tbl.length >= 2 && isSep(tbl[1])) { header = cells(tbl[0]); body = tbl.slice(2); }
+        let t = "<table class='tbl'>";
+        if (header) t += "<thead><tr>" + header.map((h) => `<th>${inline(h)}</th>`).join("") + "</tr></thead>";
+        t += "<tbody>" + body.filter((r) => !isSep(r))
+          .map((r) => "<tr>" + cells(r).map((c) => `<td>${inline(c)}</td>`).join("") + "</tr>").join("") + "</tbody></table>";
+        html += t; tbl = [];
+      };
+      const closeSection = () => { closeList(); flushTable(); if (inSection) { html += "</section>"; inSection = false; } };
+      for (const raw of lines) {
+        const line = raw.trim();
+        // 표 행("| ... |")은 모아뒀다가 한꺼번에 표로 변환
+        if (/^\|.*\|$/.test(line)) { closeList(); tbl.push(line); continue; }
+        flushTable();
+        if (!line) { closeList(); continue; }
+        if (/^---+$/.test(line)) { continue; } // 섹션이 구분을 담당하므로 가로줄은 생략
+        let m;
+        // 제목(##/###)을 만나면 새 섹션 박스 시작. 첫 섹션(요약)은 강조 박스로.
+        if ((m = line.match(/^#{1,3}\s+(.*)/))) {
+          closeSection(); secIndex++;
+          const cls = secIndex === 1 ? "sec summary" : "sec";
+          html += `<section class="${cls}"><h3>${inline(m[1])}</h3>`;
+          inSection = true;
+          inNews = /뉴스/.test(m[1]); // 뉴스 섹션이면 제목을 검색 링크로 만든다
+          continue;
+        }
+        if ((m = line.match(/^[-*]\s+(.*)/))) {
+          if (listType !== "ul") { closeList(); html += "<ul>"; listType = "ul"; }
+          html += `<li>${inNews ? newsItem(m[1]) : inline(m[1])}</li>`; continue;
+        }
+        if ((m = line.match(/^\d+[.)]\s+(.*)/))) {
+          if (listType !== "ol") { closeList(); html += "<ol>"; listType = "ol"; }
+          html += `<li>${inline(m[1])}</li>`; continue;
+        }
+        closeList(); html += `<p>${inline(line)}</p>`;
+      }
+      closeSection();
+      return html;
+    }
+
+    let lastText = ""; // 복사용 원본 텍스트 보관
+
+    async function research() {
+      const apiKey = apiKeyEl.value.trim();
+      const topic = topicEl.value.trim();
+      const chosen = checkboxes().filter((c) => c.checked);
+      if (!apiKey) { alert("Gemini API 키를 입력해 주세요."); return; }
+      if (!topic) { alert("교육 주제 키워드를 입력해 주세요."); return; }
+      if (chosen.length === 0) { alert("조사할 항목을 최소 한 개는 선택해 주세요."); return; }
+
+      runBtn.disabled = true;
+      copyBtn.style.display = "none";
+      printBtn.style.display = "none";
+      sourcesEl.innerHTML = "";
+      reportEl.innerHTML = '<span class="muted">조사 중…</span>';
+      statusEl.textContent = "구글 검색으로 조사하고 있어요 ⏳";
+
+      try {
+        const prompt = buildPrompt(topic, industryEl.value.trim());
+        // 혼잡하면 잠시 기다렸다 재시도하고, 그래도 안 되면 다음 모델로 자동 전환
+        let data = null, lastErr = null;
+        outer:
+        for (const model of MODELS) {
+          for (let attempt = 1; attempt <= 2; attempt++) {
+            try { data = await callGemini(model, apiKey, prompt); lastErr = null; break outer; }
+            catch (e) {
+              lastErr = e;
+              if (!e.retryable) throw e; // 진짜 오류(키 오류 등)는 즉시 표시
+              statusEl.textContent = `지금 혼잡해서 다시 시도 중… (${model} ${attempt}/2)`;
+              await sleep(1500 * attempt);
+            }
+          }
+        }
+        if (!data) throw lastErr;
+        const { text, cites } = extractGemini(data);
+
+        lastText = text;
+        if (text) {
+          // 시간배분 코드블록이 있으면 막대그래프로 바꾸고, 본문에서는 빼낸다
+          let body = text, chartHtml = "";
+          const cm = text.match(/```\s*시간배분\s*\n([\s\S]*?)```/);
+          if (cm) { chartHtml = renderChart(cm[1]); body = text.replace(cm[0], "").trim(); }
+          reportEl.innerHTML = renderMarkdown(body) + chartHtml;
+          // 인쇄용 표지(제목 + 날짜) 채우기
+          printHeadEl.innerHTML =
+            `<h2>${escapeHtml(topic)} — 교육 기획 조사 보고서</h2>` +
+            `<div class="meta">작성일: ${new Date().toLocaleDateString("ko-KR")}</div>`;
+          copyBtn.style.display = "inline-block";
+          printBtn.style.display = "inline-block";
+        } else {
+          reportEl.textContent = "(빈 응답)";
+        }
+
+        // 중복 제거한 검색 출처(실제 확인된 링크)
+        const seen = new Set();
+        const links = cites.filter((c) => !seen.has(c.uri) && seen.add(c.uri));
+        if (links.length) {
+          sourcesEl.innerHTML = "<b>🔗 검색 출처 (클릭 가능 — 실제 확인된 링크)</b><br>" + links
+            .map((w) => `· <a href="${w.uri}" target="_blank" rel="noopener">${escapeHtml(w.title || w.uri)}</a>`)
+            .join("<br>");
+        }
+        statusEl.textContent = "완료 ✓";
+      } catch (err) {
+        reportEl.textContent = "오류가 났어요: " + err.message;
+        statusEl.textContent = "";
+      } finally {
+        runBtn.disabled = false;
+      }
+    }
+
+    runBtn.addEventListener("click", research);
+
+    copyBtn.addEventListener("click", async () => {
+      await navigator.clipboard.writeText(lastText);
+      copyBtn.textContent = "복사됨 ✓";
+      setTimeout(() => (copyBtn.textContent = "복사하기"), 1500);
+    });
+
+    printBtn.addEventListener("click", () => window.print());
+  </script>
+</body>
+</html>
