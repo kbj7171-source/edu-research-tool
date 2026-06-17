@@ -438,6 +438,8 @@
           <button id="docApproval" class="btn-sm">📋 품의서 초안</button>
           <button id="docPlan" class="btn-sm">🗂 교육 계획서</button>
           <button id="docSurvey" class="btn-sm">📝 설문 문항(사전·사후)</button>
+          <button id="docQA" class="btn-sm">🎤 임원 예상질문 & 방어</button>
+          <button id="docRedteam" class="btn-sm">🥊 레드팀 허점 검토</button>
         </div>
 
         <div class="section-title" style="margin-top:14px;">저장 · 공유</div>
@@ -519,6 +521,7 @@
     const followupEl = $("followup"), resultToolsEl = $("resultTools");
     const dlMdBtn = $("dlMd"), dlDocBtn = $("dlDoc"), slideBtn = $("slide"), shareBtn = $("shareBtn");
     const docApprovalBtn = $("docApproval"), docPlanBtn = $("docPlan"), docSurveyBtn = $("docSurvey");
+    const docQABtn = $("docQA"), docRedteamBtn = $("docRedteam");
     const historyExportBtn = $("historyExport"), historyImportBtn = $("historyImport"), historyImportFileEl = $("historyImportFile"), historyEmptyEl = $("historyEmpty");
     const followupQEl = $("followupQ"), followupBtn = $("followupBtn"), followupStatusEl = $("followupStatus");
     const presetSelEl = $("presetSel"), presetSaveBtn = $("presetSave"), presetDelBtn = $("presetDel");
@@ -1213,6 +1216,17 @@ ${lines}
 ## 사후 만족도 설문 — 만족도·이해도·현업 적용도·개선점 문항 6~8개(리커트 5점 척도 위주, 주관식 1~2개 포함)
 각 문항은 번호 목록으로, 객관식 보기는 a) b) c) 형태로 함께 적어줘.`,
       "📝 설문 문항(사전·사후)"
+    ));
+    docQABtn.addEventListener("click", () => askFollowup(
+      `위 조사·기획 내용을 임원에게 보고한다고 가정하고, 의사결정자(임원)가 던질 법한 날카롭고 현실적인 질문 10개와 각 질문의 설득력 있는 모범 답변을 만들어줘.
+형식: 각 항목을 "## Q1. 질문" 소제목 + 그 아래 "- 답변: ..." (핵심 근거·수치 포함, 2~3문장).
+예산 타당성 / 기대효과·측정 / 우선순위(왜 지금) / 리스크 / 대안 대비 우위 / 인원·시간 적정성 등 결재자가 따질 관점을 골고루 담아줘.`,
+      "🎤 임원 예상질문 & 방어 답변"
+    ));
+    docRedteamBtn.addEventListener("click", () => askFollowup(
+      `너는 이 교육 기획을 통과시키지 않으려는 비판적 '레드팀' 심사위원이야. 위 기획의 약점을 냉정하게 공격해줘. 막연한 칭찬은 금지, 구체적으로.
+구성: ## 1. 핵심 약점(불릿, 각 약점마다 '왜 문제인지' 한 줄) / ## 2. 예상 리스크(실패 시나리오 포함) / ## 3. 반대 측 논리(이 교육을 안 해도 되는 이유) / ## 4. 그래서 보완하려면(앞의 각 지적에 대한 구체적 보완책).`,
+      "🥊 레드팀 허점 검토"
     ));
 
     // --- 결과 공유 링크: 보고서를 URL 해시(#r=)에 담아 백엔드 없이 공유 ---
