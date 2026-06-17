@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>교육 기획 근거 도우미 — Gemini 검색 조사</title>
+  <title>VisionCenter 교육기획 AI</title>
   <style>
     /* 색을 전부 변수로 두어 다크모드를 한 곳에서 전환. 라이트가 기본값. (토스 스타일) */
     :root {
@@ -32,8 +32,13 @@
       transition: background .2s, color .2s;
     }
     .wrap { max-width: 760px; margin: 0 auto; }
-    /* 제목줄: 왼쪽 제목, 오른쪽 다크모드 토글 */
+    /* 제목줄: 왼쪽 로고·제목, 오른쪽 다크모드 토글 */
     .topbar { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+    .brand-logo { height: 30px; width: auto; display: block; margin-bottom: 10px; }
+    /* 로고 글자가 검정이라 다크모드에선 흰 박스를 깔아 항상 보이게 */
+    :root[data-theme="dark"] .brand-logo {
+      background: #fff; padding: 5px 9px; border-radius: 8px; box-sizing: content-box;
+    }
     h1 { font-size: 22px; margin: 0 0 4px; }
     .sub { color: var(--sub); font-size: 14px; margin: 0 0 20px; }
     .card {
@@ -156,11 +161,17 @@
     #budget table.budget td.num, #budget table.budget th.num { text-align: right; }
     #budget table.budget tfoot td { font-weight: 700; background: var(--soft); }
     #budget input[type="number"] {
-      width: 100%; padding: 8px 10px; font-size: 14px; text-align: right;
-      border: 1px solid var(--line); border-radius: 8px; background: var(--input-bg); color: var(--text); font-family: inherit;
+      width: 100%; padding: 13px 14px; font-size: 15px; font-weight: 600; text-align: right;
+      border: 1px solid var(--line); border-radius: 14px; background: var(--input-bg);
+      color: var(--text); font-family: inherit; transition: border-color .15s, background .15s;
+      -moz-appearance: textfield;
     }
-    .bgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 14px; }
-    .bgrid label { font-size: 13px; font-weight: 600; display: block; margin-bottom: 4px; }
+    /* 숫자 입력 화살표(스피너) 숨겨서 토스처럼 깔끔하게 */
+    #budget input[type="number"]::-webkit-outer-spin-button,
+    #budget input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+    #budget input[type="number"]:focus { outline: none; border-color: var(--accent); background: var(--card); }
+    .bgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .bgrid label { font-size: 13px; font-weight: 600; color: var(--sub); display: block; margin-bottom: 6px; }
 
     /* 후속 질문 / 슬라이드 결과 */
     #followup { display: grid; gap: 12px; }
@@ -209,8 +220,10 @@
   <div class="wrap">
     <div class="topbar no-print">
       <div>
-        <h1>교육 기획 근거 도우미 — Gemini 검색 조사</h1>
+        <img src="01_ITCEN_Logo_Basic.png" alt="ITCEN" class="brand-logo" />
+        <h1>VisionCenter 교육기획 AI</h1>
         <p class="sub">조사할 항목·범위·분량을 골라서, 내 Gemini가 웹 검색으로 정리합니다.</p>
+        <p class="sub" style="margin-bottom:0;">만든이 김민재</p>
       </div>
       <button id="themeToggle" class="btn-sm" title="밝게/어둡게 전환" style="margin-top:2px;">🌙 다크</button>
     </div>
