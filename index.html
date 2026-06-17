@@ -5,21 +5,23 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>교육 기획 근거 도우미 — Gemini 검색 조사</title>
   <style>
-    /* 색을 전부 변수로 두어 다크모드를 한 곳에서 전환. 라이트가 기본값. */
+    /* 색을 전부 변수로 두어 다크모드를 한 곳에서 전환. 라이트가 기본값. (토스 스타일) */
     :root {
-      --bg: #f4f1ea; --card: #fff; --text: #2b2b2b; --sub: #7a746a; --muted: #9a948a;
-      --line: #d9d4c7; --soft-line: #eee4d3; --accent: #b5562f;
-      --input-bg: #fffdf8; --soft: #faf6ee; --table-head: #f6efe2; --table-line: #e7e0d2;
-      --hint: #8a847a; --bar-bg: #efe9dd; --qa-bg: #fbf8f1;
-      --warn-bg: #fbf3e7; --warn-line: #ecd9bf; --warn-text: #8a5a2b; --chip-bg: #f1ebdd;
+      --bg: #ffffff; --card: #ffffff; --text: #191f28; --sub: #4e5968; --muted: #8b95a1;
+      --line: #e5e8eb; --soft-line: #eaedf1; --accent: #3182f6;
+      --input-bg: #f7f8fa; --soft: #eff6ff; --table-head: #f2f4f6; --table-line: #e5e8eb;
+      --hint: #8b95a1; --bar-bg: #e5e8eb; --qa-bg: #f7f8fa;
+      --warn-bg: #f2f4f6; --warn-line: #e5e8eb; --warn-text: #4e5968; --chip-bg: #f2f4f6;
+      --shadow: 0 1px 3px rgba(0, 0, 0, .06);
     }
-    /* 다크모드: <html data-theme="dark">일 때만 적용 */
+    /* 다크모드: <html data-theme="dark">일 때만 적용 (블랙 + 블루) */
     :root[data-theme="dark"] {
-      --bg: #1c1a17; --card: #26231f; --text: #e9e4d9; --sub: #b3ac9e; --muted: #8f897d;
-      --line: #403b34; --soft-line: #3a352d; --accent: #e08a63;
-      --input-bg: #201e1a; --soft: #2f2a23; --table-head: #332e26; --table-line: #3f3a32;
-      --hint: #9a9385; --bar-bg: #3a352d; --qa-bg: #2b2720;
-      --warn-bg: #3a2f20; --warn-line: #5a4a30; --warn-text: #e0b483; --chip-bg: #332e26;
+      --bg: #0e0f12; --card: #1a1c22; --text: #e8ebf0; --sub: #a0a8b4; --muted: #6b7280;
+      --line: #2a2e37; --soft-line: #262a32; --accent: #4593fc;
+      --input-bg: #15171c; --soft: #15233a; --table-head: #20242d; --table-line: #2a2e37;
+      --hint: #8b95a1; --bar-bg: #2a2e37; --qa-bg: #16181d;
+      --warn-bg: #1c1f26; --warn-line: #2a2e37; --warn-text: #a0a8b4; --chip-bg: #20242d;
+      --shadow: none;
     }
     * { box-sizing: border-box; }
     body {
@@ -35,23 +37,24 @@
     h1 { font-size: 22px; margin: 0 0 4px; }
     .sub { color: var(--sub); font-size: 14px; margin: 0 0 20px; }
     .card {
-      background: var(--card); border: 1px solid var(--line); border-radius: 12px;
-      padding: 20px; margin-bottom: 16px;
+      background: var(--card); border: 1px solid var(--line); border-radius: 16px;
+      padding: 20px; margin-bottom: 16px; box-shadow: var(--shadow);
     }
     label.field { display: block; font-weight: 600; font-size: 14px; margin: 12px 0 6px; }
     input[type="text"], input[type="password"], select, textarea {
-      width: 100%; padding: 10px 12px; font-size: 15px;
-      border: 1px solid var(--line); border-radius: 8px; font-family: inherit;
+      width: 100%; padding: 12px 14px; font-size: 15px;
+      border: 1px solid var(--line); border-radius: 12px; font-family: inherit;
       background: var(--input-bg); color: var(--text);
     }
+    input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); }
     textarea { resize: vertical; min-height: 70px; line-height: 1.5; }
     .row { display: flex; gap: 12px; }
     .row > div { flex: 1; }
     button {
-      margin-top: 16px; padding: 12px 20px; font-size: 15px; font-weight: 600;
-      color: #fff; background: var(--accent); border: none; border-radius: 8px; cursor: pointer;
+      margin-top: 16px; padding: 13px 20px; font-size: 15px; font-weight: 700;
+      color: #fff; background: var(--accent); border: none; border-radius: 12px; cursor: pointer;
     }
-    button:disabled { background: #b9b3a7; cursor: not-allowed; }
+    button:disabled { background: var(--muted); opacity: .6; cursor: not-allowed; }
     button.ghost { background: var(--card); color: var(--accent); border: 1px solid var(--accent); }
     .hint { font-size: 12px; color: var(--hint); margin-top: 6px; }
     .warn {
@@ -130,8 +133,8 @@
     .minirow { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; }
     .minirow select { width: auto; flex: 1 1 160px; padding: 8px 10px; font-size: 13px; }
     .btn-sm {
-      margin: 0; padding: 8px 12px; font-size: 13px; font-weight: 600;
-      background: var(--card); color: var(--accent); border: 1px solid var(--accent); border-radius: 8px; cursor: pointer;
+      margin: 0; padding: 9px 14px; font-size: 13px; font-weight: 600;
+      background: var(--card); color: var(--accent); border: 1px solid var(--accent); border-radius: 10px; cursor: pointer;
     }
     .btn-sm.solid { background: var(--accent); color: #fff; border-color: var(--accent); }
     .btn-sm:disabled { opacity: .5; cursor: not-allowed; }
@@ -171,9 +174,9 @@
     @media print {
       /* 다크모드여도 인쇄는 항상 흰 배경·검정 글씨로(잉크 절약·가독성) */
       :root, :root[data-theme="dark"] {
-        --bg: #fff; --card: #fff; --text: #222; --sub: #666; --muted: #888;
-        --line: #ccc; --soft-line: #ddd; --soft: #faf6ee;
-        --table-head: #f6efe2; --table-line: #ddd; --hint: #666; --qa-bg: #faf8f3;
+        --bg: #fff; --card: #fff; --text: #191f28; --sub: #4e5968; --muted: #8b95a1;
+        --line: #d6dade; --soft-line: #e5e8eb; --soft: #eff6ff;
+        --table-head: #f2f4f6; --table-line: #d6dade; --hint: #4e5968; --qa-bg: #f7f8fa;
       }
       body { background: #fff; padding: 0; }
       .no-print { display: none !important; }
