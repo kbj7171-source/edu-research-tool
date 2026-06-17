@@ -94,6 +94,47 @@
 
     #sources { margin-top: 16px; font-size: 13px; border-top: 1px dashed var(--line); padding-top: 12px; }
     #sources a { color: var(--accent); }
+    #sources ol { margin: 8px 0 0; padding-left: 22px; }
+    #sources li { margin: 4px 0; }
+    #sources .host { color: #9a948a; font-size: 12px; }
+
+    /* 작은 보조 도구줄(프리셋·기록·다운로드 등) */
+    .minirow { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; }
+    .minirow select { width: auto; flex: 1 1 160px; padding: 8px 10px; font-size: 13px; }
+    .btn-sm {
+      margin: 0; padding: 8px 12px; font-size: 13px; font-weight: 600;
+      background: #fff; color: var(--accent); border: 1px solid var(--accent); border-radius: 8px; cursor: pointer;
+    }
+    .btn-sm.solid { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .btn-sm:disabled { opacity: .5; cursor: not-allowed; }
+    .section-title { font-weight: 700; font-size: 14px; color: var(--accent); margin: 4px 0 2px; }
+
+    /* 이전 기록 목록 */
+    #historyList { list-style: none; margin: 8px 0 0; padding: 0; }
+    #historyList li { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-top: 1px solid #f0eadd; }
+    #historyList li:first-child { border-top: none; }
+    #historyList .h-load { flex: 1; text-align: left; background: none; border: none; color: #2b2b2b; cursor: pointer; padding: 0; font-size: 14px; font-family: inherit; }
+    #historyList .h-load:hover { color: var(--accent); text-decoration: underline; }
+    #historyList .h-date { color: #9a948a; font-size: 12px; }
+    #historyList .h-del { background: none; border: none; color: #b9b3a7; cursor: pointer; font-size: 15px; padding: 0 4px; margin: 0; }
+    #historyList .h-del:hover { color: var(--accent); }
+
+    /* 예산 계산기 */
+    #budget table.budget { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 14px; }
+    #budget table.budget th, #budget table.budget td { border: 1px solid #e7e0d2; padding: 8px 10px; }
+    #budget table.budget td.num, #budget table.budget th.num { text-align: right; }
+    #budget table.budget tfoot td { font-weight: 700; background: #faf6ee; }
+    #budget input[type="number"] {
+      width: 100%; padding: 8px 10px; font-size: 14px; text-align: right;
+      border: 1px solid var(--line); border-radius: 8px; background: #fffdf8; font-family: inherit;
+    }
+    .bgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 14px; }
+    .bgrid label { font-size: 13px; font-weight: 600; display: block; margin-bottom: 4px; }
+
+    /* 후속 질문 / 슬라이드 결과 */
+    #followup { display: grid; gap: 12px; }
+    #followup .qa { background: #fbf8f1; border: 1px solid var(--line); border-radius: 10px; padding: 14px; }
+    #followup .qa .q { font-weight: 700; color: var(--accent); margin-bottom: 8px; }
 
     /* 인쇄 헤더는 화면에선 숨기고 인쇄할 때만 보이게 */
     #printHead { display: none; }
@@ -111,6 +152,17 @@
       #report > .sec, #report > .chart {
         box-shadow: none; margin-bottom: 12px; break-inside: avoid;
       }
+    }
+
+    /* --- 모바일: 좁은 화면에서 두 칸 배치를 한 칸으로 --- */
+    @media (max-width: 640px) {
+      body { padding: 14px; }
+      .card { padding: 16px; }
+      .row { flex-direction: column; gap: 0; }
+      .checks { grid-template-columns: 1fr; }
+      .bgrid { grid-template-columns: 1fr; }
+      .bar-label { flex: 0 0 96px; }
+      h1 { font-size: 19px; }
     }
   </style>
 </head>
@@ -144,7 +196,16 @@
 
     <!-- 사용자가 필요에 맞게 조사 범위를 고르는 칸 -->
     <div class="card no-print">
-      <label class="field">조사할 항목 (필요한 것만 체크)</label>
+      <!-- 자주 쓰는 옵션 조합을 저장/불러오기 -->
+      <div class="section-title">조건 프리셋</div>
+      <div class="minirow">
+        <select id="presetSel"><option value="">저장된 프리셋 선택…</option></select>
+        <button id="presetSave" class="btn-sm">현재 설정 저장</button>
+        <button id="presetDel" class="btn-sm">삭제</button>
+      </div>
+      <div class="hint">지금 고른 항목·옵션 조합을 이름 붙여 저장해두고 다음에 한 번에 불러옵니다.</div>
+
+      <label class="field" style="margin-top:16px;">조사할 항목 (필요한 것만 체크)</label>
       <div class="checks" id="checks"></div>
       <div class="toolbar">
         <a id="selectAll">전체 선택</a><a id="selectNone">전체 해제</a>
@@ -242,10 +303,51 @@
       <div id="report"><span class="muted">아직 결과가 없습니다.</span></div>
       <div id="sources"></div>
 
-      <div class="no-print">
-        <button id="copy" class="ghost" style="display:none;">복사하기</button>
-        <button id="print" class="ghost" style="display:none;">인쇄 / PDF 저장</button>
+      <!-- 후속 질문·슬라이드 결과(보고서의 일부이므로 인쇄에도 포함) -->
+      <div id="followup"></div>
+
+      <div class="no-print" id="resultTools" style="display:none;">
+        <div class="minirow">
+          <button id="copy" class="btn-sm">복사하기</button>
+          <button id="dlMd" class="btn-sm">Markdown(.md) 저장</button>
+          <button id="dlDoc" class="btn-sm">Word(.doc) 저장</button>
+          <button id="print" class="btn-sm">인쇄 / PDF 저장</button>
+          <button id="slide" class="btn-sm">발표용 슬라이드 개요</button>
+        </div>
+
+        <!-- 결과에 대해 이어서 질문 -->
+        <label class="field" for="followupQ" style="margin-top:14px;">이어서 질문하기</label>
+        <textarea id="followupQ" placeholder="예: 위 사례 중 출판업계 것만 더 자세히 / 예산을 절반으로 줄이려면?"></textarea>
+        <button id="followupBtn" class="btn-sm solid" style="margin-top:8px;">질문 보내기</button>
+        <div id="followupStatus" class="hint"></div>
       </div>
+    </div>
+
+    <!-- 예산 계산기: AI가 단가를 추정해 채우고, 숫자를 고치면 합계 자동 재계산 -->
+    <div class="card no-print">
+      <div class="section-title">💰 예산 계산기</div>
+      <div class="hint" style="margin-bottom:10px;">단가를 직접 입력하거나, AI 추정으로 한 번에 채운 뒤 수정하세요. 숫자를 바꾸면 합계가 자동 계산됩니다.</div>
+      <div class="bgrid">
+        <div><label for="bHeadcount">교육 인원(명)</label><input type="number" id="bHeadcount" min="0" value="20" /></div>
+        <div><label for="bHours">총 교육 시간(시간)</label><input type="number" id="bHours" min="0" value="4" /></div>
+        <div><label for="bRate">강사료(시간당, 원)</label><input type="number" id="bRate" min="0" value="0" /></div>
+        <div><label for="bMaterial">1인당 교재·운영비(원)</label><input type="number" id="bMaterial" min="0" value="0" /></div>
+        <div><label for="bVenue">장소·기타 비용(원)</label><input type="number" id="bVenue" min="0" value="0" /></div>
+      </div>
+      <div class="minirow">
+        <button id="bEstimate" class="btn-sm solid">AI로 단가 추정해 채우기</button>
+        <span id="bStatus" class="hint" style="margin:0;"></span>
+      </div>
+      <div id="budget"></div>
+    </div>
+
+    <!-- 이전 조사 기록(이 브라우저에만 저장) -->
+    <div class="card no-print" id="historyCard" style="display:none;">
+      <div class="minirow" style="justify-content:space-between;">
+        <div class="section-title" style="margin:0;">🕘 이전 조사 기록</div>
+        <button id="historyClear" class="btn-sm">전체 삭제</button>
+      </div>
+      <ul id="historyList"></ul>
     </div>
   </div>
 
@@ -257,6 +359,13 @@
     const customEl = $("custom");
     const reportEl = $("report"), sourcesEl = $("sources"), statusEl = $("status"), printHeadEl = $("printHead");
     const runBtn = $("run"), copyBtn = $("copy"), printBtn = $("print"), checksEl = $("checks");
+    const followupEl = $("followup"), resultToolsEl = $("resultTools");
+    const dlMdBtn = $("dlMd"), dlDocBtn = $("dlDoc"), slideBtn = $("slide");
+    const followupQEl = $("followupQ"), followupBtn = $("followupBtn"), followupStatusEl = $("followupStatus");
+    const presetSelEl = $("presetSel"), presetSaveBtn = $("presetSave"), presetDelBtn = $("presetDel");
+    const historyCardEl = $("historyCard"), historyListEl = $("historyList"), historyClearBtn = $("historyClear");
+    const budgetOutEl = $("budget"), bStatusEl = $("bStatus"), bEstimateBtn = $("bEstimate");
+    const bInputs = ["bHeadcount", "bHours", "bRate", "bMaterial", "bVenue"].map($);
 
     apiKeyEl.value = localStorage.getItem("gemini_api_key") || "";
     apiKeyEl.addEventListener("change", () =>
@@ -267,37 +376,85 @@
     const MODELS = ["gemini-2.5-flash", "gemini-2.0-flash"];
     const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-    async function callGemini(model, apiKey, prompt) {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
+    // 일시적 오류(혼잡/과부하/요청량 초과)는 잠시 후 재시도하면 풀린다
+    function makeError(detail, status) {
+      const e = new Error(detail);
+      e.retryable = status === 429 || status === 503 ||
+        /high demand|overload|unavailable|try again/i.test(detail);
+      return e;
+    }
+    // 한 응답 조각(chunk)에서 본문 텍스트를 뽑는다 (스트리밍은 조각을 이어붙임 → trim 안 함)
+    function chunkText(obj) {
+      const cand = (obj.candidates || [])[0];
+      return ((cand && cand.content && cand.content.parts) || [])
+        .map((p) => p.text).filter(Boolean).join("");
+    }
+    // 한 응답 조각에서 검색 출처(실제 링크)를 뽑는다. 보통 마지막 조각에 들어옴.
+    function chunkCites(obj) {
+      const cand = (obj.candidates || [])[0];
+      const chunks = (cand && cand.groundingMetadata && cand.groundingMetadata.groundingChunks) || [];
+      return chunks.map((c) => c.web).filter(Boolean).map((w) => ({ uri: w.uri, title: w.title || w.uri }));
+    }
+
+    // 스트리밍 호출: 글이 도착하는 대로 onText(누적 텍스트)를 호출. 끝나면 {text, cites} 반환.
+    async function callGeminiStream(model, apiKey, contents, onText) {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${encodeURIComponent(apiKey)}`;
       const res = await fetch(url, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          tools: [{ google_search: {} }],
-        }),
+        body: JSON.stringify({ contents, tools: [{ google_search: {} }] }),
       });
-      if (!res.ok) {
+      if (!res.ok || !res.body) {
         let detail = `HTTP ${res.status}`;
         try { detail = (await res.json()).error?.message || detail; } catch (_) {}
-        const e = new Error(detail);
-        // 과부하·혼잡·요청량 초과는 잠시 후 재시도하면 풀리는 일시적 오류
-        e.retryable = res.status === 429 || res.status === 503 ||
-          /high demand|overload|unavailable|try again/i.test(detail);
-        throw e;
+        throw makeError(detail, res.status);
       }
-      return res.json();
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buf = "", full = "", cites = [];
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        // SSE는 "data: {json}\n\n" 형태. 줄 단위로 끊어 처리하고 마지막 미완성 줄은 버퍼에 남긴다.
+        const lines = buf.split("\n");
+        buf = lines.pop();
+        for (const raw of lines) {
+          const line = raw.trim();
+          if (!line.startsWith("data:")) continue;
+          const json = line.slice(5).trim();
+          if (!json || json === "[DONE]") continue;
+          try {
+            const obj = JSON.parse(json);
+            const t = chunkText(obj);
+            if (t) { full += t; if (onText) onText(full); }
+            const c = chunkCites(obj);
+            if (c.length) cites.push(...c);
+          } catch (_) { /* 조각이 쪼개져 들어오면 무시(다음 조각에서 합쳐짐) */ }
+        }
+      }
+      return { text: full.trim(), cites };
     }
 
-    // Gemini 응답에서 본문 텍스트와 검색 출처(실제 링크)를 뽑는다
-    function extractGemini(data) {
-      const cand = (data.candidates || [])[0];
-      const text = ((cand && cand.content && cand.content.parts) || [])
-        .map((p) => p.text).filter(Boolean).join("\n").trim();
-      const chunks = (cand && cand.groundingMetadata && cand.groundingMetadata.groundingChunks) || [];
-      const cites = chunks.map((c) => c.web).filter(Boolean).map((w) => ({ uri: w.uri, title: w.title || w.uri }));
-      return { text, cites };
+    // 혼잡하면 잠시 기다렸다 재시도하고, 그래도 안 되면 다음 모델로 자동 전환
+    async function runGemini(apiKey, contents, onText) {
+      let lastErr = null;
+      for (const model of MODELS) {
+        for (let attempt = 1; attempt <= 2; attempt++) {
+          try { return await callGeminiStream(model, apiKey, contents, onText); }
+          catch (e) {
+            lastErr = e;
+            if (!e.retryable) throw e; // 진짜 오류(키 오류 등)는 즉시 표시
+            statusEl.textContent = `지금 혼잡해서 다시 시도 중… (${model} ${attempt}/2)`;
+            await sleep(1500 * attempt);
+          }
+        }
+      }
+      throw lastErr;
     }
+    // 멀티턴 대화용 contents 누적 (후속 질문에서 맥락 유지)
+    const userTurn = (text) => ({ role: "user", parts: [{ text }] });
+    const modelTurn = (text) => ({ role: "model", parts: [{ text }] });
 
     const ITEMS = [
       { id: "trend",      label: "요즘 교육 트렌드",        text: "요즘 교육 트렌드 — 이 주제와 관련해 최근 뜨고 있는 흐름", def: true },
@@ -495,67 +652,76 @@ ${lines}
       return html;
     }
 
-    let lastText = ""; // 복사용 원본 텍스트 보관
+    // --- 결과·대화 상태 보관 ---
+    let lastText = "", lastCites = [], lastTopic = "", lastIndustry = "";
+    let conversation = [];   // 멀티턴(후속 질문) 맥락
+    let followupLog = [];    // 다운로드에 포함할 후속 Q/A
+
+    const escapeAttr = (s) => String(s).replace(/"/g, "&quot;");
+
+    // 검색 출처 렌더(번호 + 출처 사이트 표시). 발행일은 API가 일관되게 안 주므로 본문에 맡김.
+    function hostOf(uri) {
+      try {
+        const h = new URL(uri).hostname.replace(/^www\./, "");
+        // 구글 grounding 리다이렉트 도메인은 실제 출처가 아니라 숨김
+        if (/vertexaisearch|googleusercontent|grounding-api/.test(h)) return "";
+        return h;
+      } catch (_) { return ""; }
+    }
+    function renderSources(cites) {
+      const seen = new Set();
+      const links = (cites || []).filter((c) => c.uri && !seen.has(c.uri) && seen.add(c.uri));
+      if (!links.length) { sourcesEl.innerHTML = ""; return; }
+      sourcesEl.innerHTML = "<b>🔗 검색 출처 (클릭 가능 — 실제 확인된 링크)</b><ol>" +
+        links.map((w) => {
+          const host = hostOf(w.uri);
+          return `<li><a href="${w.uri}" target="_blank" rel="noopener">${escapeHtml(w.title || w.uri)}</a>` +
+            (host ? ` <span class="host">— ${escapeHtml(host)}</span>` : "") + "</li>";
+        }).join("") + "</ol>" +
+        `<div class="hint">발행일은 검색 API가 일관되게 제공하지 않습니다. 필요한 경우 본문(뉴스 항목)에 표기됩니다.</div>`;
+    }
+
+    // 본문 텍스트 → 보고서 카드 렌더 + 표지/출처/도구 노출 (조사·기록불러오기 공통)
+    function finalizeReport(text, cites, topic, industry, save) {
+      lastText = text; lastCites = cites || []; lastTopic = topic; lastIndustry = industry || "";
+      followupLog = []; followupEl.innerHTML = "";
+      // 시간배분 코드블록이 있으면 막대그래프로 바꾸고, 본문에서는 빼낸다
+      let body = text, chartHtml = "";
+      const cm = text.match(/```\s*시간배분\s*\n([\s\S]*?)```/);
+      if (cm) { chartHtml = renderChart(cm[1]); body = text.replace(cm[0], "").trim(); }
+      reportEl.innerHTML = text ? (renderMarkdown(body) + chartHtml) : "(빈 응답)";
+      printHeadEl.innerHTML =
+        `<h2>${escapeHtml(topic)} — 교육 기획 조사 보고서</h2>` +
+        `<div class="meta">작성일: ${new Date().toLocaleDateString("ko-KR")}</div>`;
+      renderSources(lastCites);
+      resultToolsEl.style.display = text ? "block" : "none";
+      if (save && text) saveHistoryRecord({ topic, industry: lastIndustry, text, cites: lastCites });
+    }
 
     async function research() {
       const apiKey = apiKeyEl.value.trim();
       const topic = topicEl.value.trim();
+      const industry = industryEl.value.trim();
       const chosen = checkboxes().filter((c) => c.checked);
       if (!apiKey) { alert("Gemini API 키를 입력해 주세요."); return; }
       if (!topic) { alert("교육 주제 키워드를 입력해 주세요."); return; }
       if (chosen.length === 0) { alert("조사할 항목을 최소 한 개는 선택해 주세요."); return; }
 
       runBtn.disabled = true;
-      copyBtn.style.display = "none";
-      printBtn.style.display = "none";
-      sourcesEl.innerHTML = "";
+      resultToolsEl.style.display = "none";
+      sourcesEl.innerHTML = ""; followupEl.innerHTML = "";
       reportEl.innerHTML = '<span class="muted">조사 중…</span>';
       statusEl.textContent = "구글 검색으로 조사하고 있어요 ⏳";
 
       try {
-        const prompt = buildPrompt(topic, industryEl.value.trim());
-        // 혼잡하면 잠시 기다렸다 재시도하고, 그래도 안 되면 다음 모델로 자동 전환
-        let data = null, lastErr = null;
-        outer:
-        for (const model of MODELS) {
-          for (let attempt = 1; attempt <= 2; attempt++) {
-            try { data = await callGemini(model, apiKey, prompt); lastErr = null; break outer; }
-            catch (e) {
-              lastErr = e;
-              if (!e.retryable) throw e; // 진짜 오류(키 오류 등)는 즉시 표시
-              statusEl.textContent = `지금 혼잡해서 다시 시도 중… (${model} ${attempt}/2)`;
-              await sleep(1500 * attempt);
-            }
-          }
-        }
-        if (!data) throw lastErr;
-        const { text, cites } = extractGemini(data);
-
-        lastText = text;
-        if (text) {
-          // 시간배분 코드블록이 있으면 막대그래프로 바꾸고, 본문에서는 빼낸다
-          let body = text, chartHtml = "";
-          const cm = text.match(/```\s*시간배분\s*\n([\s\S]*?)```/);
-          if (cm) { chartHtml = renderChart(cm[1]); body = text.replace(cm[0], "").trim(); }
-          reportEl.innerHTML = renderMarkdown(body) + chartHtml;
-          // 인쇄용 표지(제목 + 날짜) 채우기
-          printHeadEl.innerHTML =
-            `<h2>${escapeHtml(topic)} — 교육 기획 조사 보고서</h2>` +
-            `<div class="meta">작성일: ${new Date().toLocaleDateString("ko-KR")}</div>`;
-          copyBtn.style.display = "inline-block";
-          printBtn.style.display = "inline-block";
-        } else {
-          reportEl.textContent = "(빈 응답)";
-        }
-
-        // 중복 제거한 검색 출처(실제 확인된 링크)
-        const seen = new Set();
-        const links = cites.filter((c) => !seen.has(c.uri) && seen.add(c.uri));
-        if (links.length) {
-          sourcesEl.innerHTML = "<b>🔗 검색 출처 (클릭 가능 — 실제 확인된 링크)</b><br>" + links
-            .map((w) => `· <a href="${w.uri}" target="_blank" rel="noopener">${escapeHtml(w.title || w.uri)}</a>`)
-            .join("<br>");
-        }
+        const prompt = buildPrompt(topic, industry);
+        // 글이 도착하는 대로 실시간 렌더(스트리밍). 끝나면 표/그래프/출처까지 정식 렌더.
+        const { text, cites } = await runGemini(apiKey, [userTurn(prompt)], (full) => {
+          reportEl.innerHTML = renderMarkdown(full);
+        });
+        if (!text) { reportEl.textContent = "(빈 응답)"; statusEl.textContent = ""; return; }
+        finalizeReport(text, cites, topic, industry, true);
+        conversation = [userTurn(prompt), modelTurn(text)];
         statusEl.textContent = "완료 ✓";
       } catch (err) {
         reportEl.textContent = "오류가 났어요: " + err.message;
@@ -564,16 +730,227 @@ ${lines}
         runBtn.disabled = false;
       }
     }
-
     runBtn.addEventListener("click", research);
 
+    // --- 후속 질문(멀티턴) / 슬라이드 개요 ---
+    async function askFollowup(question, label) {
+      const apiKey = apiKeyEl.value.trim();
+      if (!apiKey) { alert("Gemini API 키를 입력해 주세요."); return; }
+      if (!lastText) { alert("먼저 조사를 실행해 주세요."); return; }
+      if (!question.trim()) return;
+      followupBtn.disabled = true; slideBtn.disabled = true;
+      followupStatusEl.textContent = "생각 중… ⏳";
+      const qa = document.createElement("div");
+      qa.className = "qa";
+      qa.innerHTML = `<div class="q">${escapeHtml(label || question)}</div><div class="a"><span class="muted">작성 중…</span></div>`;
+      followupEl.appendChild(qa);
+      const aEl = qa.querySelector(".a");
+      try {
+        const contents = conversation.concat([userTurn(question)]);
+        const { text } = await runGemini(apiKey, contents, (full) => { aEl.innerHTML = renderMarkdown(full); });
+        aEl.innerHTML = renderMarkdown(text || "(빈 응답)");
+        conversation.push(userTurn(question), modelTurn(text));
+        followupLog.push({ q: label || question, a: text });
+        followupStatusEl.textContent = "";
+      } catch (err) {
+        aEl.textContent = "오류가 났어요: " + err.message;
+        followupStatusEl.textContent = "";
+      } finally {
+        followupBtn.disabled = false; slideBtn.disabled = false;
+      }
+    }
+    followupBtn.addEventListener("click", () => {
+      const q = followupQEl.value.trim();
+      if (!q) { alert("질문을 입력해 주세요."); return; }
+      followupQEl.value = "";
+      askFollowup(q, q);
+    });
+    slideBtn.addEventListener("click", () => askFollowup(
+      "위 조사 내용을 발표용 슬라이드 개요로 만들어줘. 슬라이드마다 '## 슬라이드 N: 제목' 소제목과 그 아래 핵심 불릿 3~5개로. 표지·목차·결론 슬라이드 포함, 총 7~10장 내외.",
+      "📊 발표용 슬라이드 개요"
+    ));
+
+    // --- 복사 / 다운로드 ---
     copyBtn.addEventListener("click", async () => {
       await navigator.clipboard.writeText(lastText);
       copyBtn.textContent = "복사됨 ✓";
       setTimeout(() => (copyBtn.textContent = "복사하기"), 1500);
     });
-
     printBtn.addEventListener("click", () => window.print());
+
+    const safeName = () => (lastTopic || "교육기획조사").replace(/[\\/:*?"<>|]/g, "_").slice(0, 40);
+    function downloadFile(name, text, mime) {
+      const blob = new Blob(["﻿", text], { type: mime }); // BOM: 윈도우에서 한글 깨짐 방지
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob); a.download = name;
+      document.body.appendChild(a); a.click();
+      document.body.removeChild(a); URL.revokeObjectURL(a.href);
+    }
+    function exportMarkdown() {
+      let md = `# ${lastTopic} — 교육 기획 조사 보고서\n작성일: ${new Date().toLocaleDateString("ko-KR")}\n\n${lastText}\n`;
+      if (followupLog.length) md += "\n\n---\n\n# 추가 질문\n\n" + followupLog.map((f) => `## ${f.q}\n\n${f.a}\n`).join("\n");
+      const seen = new Set();
+      const links = lastCites.filter((c) => c.uri && !seen.has(c.uri) && seen.add(c.uri));
+      if (links.length) md += "\n\n---\n\n# 검색 출처\n\n" + links.map((w, i) => `${i + 1}. [${w.title || w.uri}](${w.uri})`).join("\n");
+      return md;
+    }
+    function exportDoc() {
+      const css = "body{font-family:'Malgun Gothic',sans-serif;line-height:1.6;color:#222}h2,h3{color:#b5562f}table{border-collapse:collapse;width:100%}td,th{border:1px solid #ccc;padding:6px}";
+      const inner = printHeadEl.innerHTML + reportEl.innerHTML + followupEl.innerHTML +
+        (sourcesEl.innerHTML ? `<hr>${sourcesEl.innerHTML}` : "");
+      return `<!DOCTYPE html><html><head><meta charset="utf-8"><style>${css}</style></head><body>${inner}</body></html>`;
+    }
+    dlMdBtn.addEventListener("click", () => downloadFile(safeName() + ".md", exportMarkdown(), "text/markdown;charset=utf-8"));
+    dlDocBtn.addEventListener("click", () => downloadFile(safeName() + ".doc", exportDoc(), "application/msword"));
+
+    // --- 이전 조사 기록(localStorage) ---
+    const HISTORY_KEY = "edu_history_v1";
+    function loadHistory() { try { return JSON.parse(localStorage.getItem(HISTORY_KEY)) || []; } catch (_) { return []; } }
+    function saveHistoryRecord(rec) {
+      const arr = loadHistory();
+      arr.unshift({ id: Date.now(), ts: new Date().toISOString(), topic: rec.topic, industry: rec.industry, text: rec.text, cites: rec.cites });
+      while (arr.length > 20) arr.pop(); // 최근 20건만 보관
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(arr));
+      renderHistory();
+    }
+    function renderHistory() {
+      const arr = loadHistory();
+      historyCardEl.style.display = arr.length ? "block" : "none";
+      historyListEl.innerHTML = arr.map((r) => {
+        const d = new Date(r.ts);
+        const ds = isNaN(d.getTime()) ? "" :
+          d.toLocaleDateString("ko-KR") + " " + d.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" });
+        return `<li><button class="h-load" data-id="${r.id}">${escapeHtml(r.topic || "(제목 없음)")}</button>` +
+          `<span class="h-date">${ds}</span><button class="h-del" data-id="${r.id}" title="삭제">✕</button></li>`;
+      }).join("");
+    }
+    function loadHistoryItem(id) {
+      const r = loadHistory().find((x) => String(x.id) === String(id));
+      if (!r) return;
+      finalizeReport(r.text, r.cites || [], r.topic, r.industry, false);
+      conversation = [
+        userTurn(`[직전 조사 보고서] 주제: ${r.topic}${r.industry ? ", 맥락: " + r.industry : ""}\n\n${r.text}`),
+        modelTurn(r.text),
+      ];
+      statusEl.textContent = "이전 기록 불러옴 ✓";
+      reportEl.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+    historyListEl.addEventListener("click", (e) => {
+      const id = e.target.dataset.id; if (!id) return;
+      if (e.target.classList.contains("h-del")) {
+        localStorage.setItem(HISTORY_KEY, JSON.stringify(loadHistory().filter((x) => String(x.id) !== String(id))));
+        renderHistory();
+      } else if (e.target.classList.contains("h-load")) {
+        loadHistoryItem(id);
+      }
+    });
+    historyClearBtn.addEventListener("click", () => {
+      if (!confirm("저장된 이전 기록을 모두 삭제할까요?")) return;
+      localStorage.removeItem(HISTORY_KEY); renderHistory();
+    });
+
+    // --- 조건 프리셋(localStorage) ---
+    const PRESET_KEY = "edu_presets_v1";
+    function loadPresets() { try { return JSON.parse(localStorage.getItem(PRESET_KEY)) || {}; } catch (_) { return {}; } }
+    function snapshotOptions() {
+      return {
+        checks: checkboxes().filter((c) => c.checked).map((c) => c.dataset.id),
+        outtype: outtypeEl.value, scope: scopeEl.value, depth: depthEl.value,
+        period: periodEl.value, size: sizeEl.value, level: levelEl.value, scale: scaleEl.value,
+      };
+    }
+    function applyOptions(s) {
+      if (!s) return;
+      if (s.checks) checkboxes().forEach((c) => (c.checked = s.checks.includes(c.dataset.id)));
+      const set = (el, v) => { if (v != null) el.value = v; };
+      set(outtypeEl, s.outtype); set(scopeEl, s.scope); set(depthEl, s.depth);
+      set(periodEl, s.period); set(sizeEl, s.size); set(levelEl, s.level); set(scaleEl, s.scale);
+    }
+    function renderPresetOptions() {
+      const p = loadPresets();
+      presetSelEl.innerHTML = `<option value="">저장된 프리셋 선택…</option>` +
+        Object.keys(p).map((n) => `<option value="${escapeAttr(n)}">${escapeHtml(n)}</option>`).join("");
+    }
+    presetSaveBtn.addEventListener("click", () => {
+      const name = prompt("프리셋 이름을 입력하세요 (예: 임원 보고용 표준)");
+      if (!name || !name.trim()) return;
+      const p = loadPresets(); p[name.trim()] = snapshotOptions();
+      localStorage.setItem(PRESET_KEY, JSON.stringify(p));
+      renderPresetOptions(); presetSelEl.value = name.trim();
+    });
+    presetSelEl.addEventListener("change", () => {
+      const p = loadPresets(); if (p[presetSelEl.value]) applyOptions(p[presetSelEl.value]);
+    });
+    presetDelBtn.addEventListener("click", () => {
+      const name = presetSelEl.value;
+      if (!name) { alert("삭제할 프리셋을 선택하세요."); return; }
+      if (!confirm(`'${name}' 프리셋을 삭제할까요?`)) return;
+      const p = loadPresets(); delete p[name];
+      localStorage.setItem(PRESET_KEY, JSON.stringify(p));
+      renderPresetOptions();
+    });
+
+    // --- 예산 계산기 (AI 추정 + 직접 수정 하이브리드) ---
+    const won = (n) => (isFinite(n) ? Math.round(n) : 0).toLocaleString("ko-KR") + "원";
+    function readBudgetInputs() {
+      const [hc, hrs, rate, mat, venue] = bInputs.map((el) => Math.max(0, +el.value || 0));
+      return { hc, hrs, rate, mat, venue };
+    }
+    function computeBudget() {
+      const { hc, hrs, rate, mat, venue } = readBudgetInputs();
+      const instructor = rate * hrs, material = mat * hc, total = instructor + material + venue;
+      const perHead = hc > 0 ? total / hc : 0;
+      budgetOutEl.innerHTML =
+        `<table class="budget"><thead><tr><th>항목</th><th class="num">산식</th><th class="num">금액</th></tr></thead><tbody>` +
+        `<tr><td>강사료</td><td class="num">${won(rate)} × ${hrs}시간</td><td class="num">${won(instructor)}</td></tr>` +
+        `<tr><td>교재·운영비</td><td class="num">${won(mat)} × ${hc}명</td><td class="num">${won(material)}</td></tr>` +
+        `<tr><td>장소·기타</td><td class="num">—</td><td class="num">${won(venue)}</td></tr>` +
+        `</tbody><tfoot>` +
+        `<tr><td>총 예산</td><td class="num"></td><td class="num">${won(total)}</td></tr>` +
+        `<tr><td>1인당 비용</td><td class="num">${hc}명 기준</td><td class="num">${won(perHead)}</td></tr>` +
+        `</tfoot></table>`;
+    }
+    bInputs.forEach((el) => el.addEventListener("input", computeBudget));
+    async function estimateBudget() {
+      const apiKey = apiKeyEl.value.trim();
+      const topic = topicEl.value.trim();
+      if (!apiKey) { alert("Gemini API 키를 입력해 주세요."); return; }
+      if (!topic) { alert("교육 주제 키워드를 먼저 입력해 주세요."); return; }
+      bEstimateBtn.disabled = true; bStatusEl.textContent = "단가 추정 중… ⏳";
+      const scaleHint = SCALE_TEXT[scaleEl.value] ? `교육 규모: ${SCALE_TEXT[scaleEl.value]}.` : "";
+      const prompt = `한국 기업교육 '${topic}' 1회 진행 기준의 일반적인 시장 단가를 알려줘. ${scaleHint}
+웹 검색으로 대략적 시세를 확인한 뒤, 아래 코드블록 형식으로 숫자(원, 정수)만 채워 딱 한 번만 출력해. 그 아래 근거는 짧은 불릿으로.
+\`\`\`예산단가
+강사료시간당: 300000
+인당교재비: 20000
+장소기타: 200000
+인원수: 20
+교육시간: 4
+\`\`\``;
+      try {
+        const { text } = await runGemini(apiKey, [userTurn(prompt)], null);
+        const cm = text.match(/```\s*예산단가\s*\n([\s\S]*?)```/);
+        const src = cm ? cm[1] : text;
+        const get = (key) => { const m = src.match(new RegExp(key + "\\s*[:：]\\s*([\\d,]+)")); return m ? +m[1].replace(/,/g, "") : null; };
+        const map = { bRate: "강사료시간당", bMaterial: "인당교재비", bVenue: "장소기타", bHeadcount: "인원수", bHours: "교육시간" };
+        let filled = 0;
+        for (const id in map) { const v = get(map[id]); if (v != null) { $(id).value = v; filled++; } }
+        computeBudget();
+        bStatusEl.textContent = filled
+          ? "추정값을 채웠어요. 숫자를 고치면 합계가 다시 계산됩니다. (대략적 시세이니 검토 필요)"
+          : "추정값을 읽지 못했어요. 직접 입력해 주세요.";
+      } catch (err) {
+        bStatusEl.textContent = "오류: " + err.message;
+      } finally {
+        bEstimateBtn.disabled = false;
+      }
+    }
+    bEstimateBtn.addEventListener("click", estimateBudget);
+
+    // --- 초기화 ---
+    renderPresetOptions();
+    renderHistory();
+    computeBudget();
   </script>
 </body>
 </html>
