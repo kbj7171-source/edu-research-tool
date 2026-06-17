@@ -142,6 +142,9 @@
       background: var(--card); color: var(--accent); border: 1px solid var(--accent); border-radius: 10px; cursor: pointer;
     }
     .btn-sm.solid { background: var(--accent); color: #fff; border-color: var(--accent); }
+    /* 열려 있는(생성된) 추가 문서 버튼은 채워서 표시 → 다시 누르면 닫힘 */
+    .btn-sm.active { background: var(--accent); color: #fff; }
+    .btn-sm.active::before { content: "✓ "; }
     .btn-sm:disabled { opacity: .5; cursor: not-allowed; }
     .section-title { font-weight: 700; font-size: 14px; color: var(--accent); margin: 4px 0 2px; }
 
@@ -177,6 +180,7 @@
     #followup { display: grid; gap: 12px; }
     #followup .qa { background: var(--qa-bg); border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
     #followup .qa .q { font-weight: 700; color: var(--accent); margin-bottom: 8px; }
+    #followup .qa.collapsed { display: none; }
     #followup .qa .a h3 { font-size: 15px; font-weight: 700; color: var(--accent); margin: 14px 0 6px; }
     #followup .qa .a section { margin: 0 0 8px; }
     #followup .qa .a ul { margin: 4px 0; padding-left: 18px; }
@@ -856,7 +860,7 @@ ${lines}
     // 본문 텍스트 → 보고서 카드 렌더 + 표지/출처/도구 노출 (조사·기록불러오기 공통)
     function finalizeReport(text, cites, topic, industry, save) {
       lastText = text; lastCites = cites || []; lastTopic = topic; lastIndustry = industry || "";
-      followupLog = []; followupEl.innerHTML = "";
+      followupLog = []; followupEl.innerHTML = ""; resetDocs();
       // 시간배분 코드블록이 있으면 막대그래프로 바꾸고, 본문에서는 빼낸다
       let body = text, chartHtml = "";
       const cm = text.match(/```\s*시간배분\s*\n([\s\S]*?)```/);
@@ -903,15 +907,25 @@ ${lines}
     runBtn.addEventListener("click", research);
 
     // --- 후속 질문(멀티턴) / 슬라이드 개요 ---
-    async function askFollowup(question, label) {
+    // 생성된 '추가 문서' 블록 추적(키 → {el, entry}). 같은 버튼 다시 누르면 열고/닫기.
+    const docBlocks = {};
+    const genButtons = () => [slideBtn, docApprovalBtn, docPlanBtn, docSurveyBtn, docQABtn, docRedteamBtn, followupBtn];
+    const setGenBusy = (b) => genButtons().forEach((x) => { if (x) x.disabled = b; });
+    function resetDocs() {
+      for (const k in docBlocks) delete docBlocks[k];
+      genButtons().forEach((b) => b && b.classList.remove("active"));
+    }
+    async function askFollowup(question, label, opts) {
+      opts = opts || {};
       const apiKey = apiKeyEl.value.trim();
       if (!apiKey) { alert("Gemini API 키를 입력해 주세요."); return; }
       if (!lastText) { alert("먼저 조사를 실행해 주세요."); return; }
       if (!question.trim()) return;
-      followupBtn.disabled = true; slideBtn.disabled = true;
+      setGenBusy(true);
       followupStatusEl.textContent = "생각 중… ⏳";
       const qa = document.createElement("div");
       qa.className = "qa";
+      if (opts.key) qa.dataset.key = opts.key;
       qa.innerHTML = `<div class="q">${escapeHtml(label || question)}</div><div class="a"><span class="muted">작성 중…</span></div>`;
       followupEl.appendChild(qa);
       const aEl = qa.querySelector(".a");
@@ -920,22 +934,38 @@ ${lines}
         const { text } = await runGemini(apiKey, contents, (full) => { aEl.innerHTML = renderMarkdown(full); });
         aEl.innerHTML = renderMarkdown(text || "(빈 응답)");
         conversation.push(userTurn(question), modelTurn(text));
-        followupLog.push({ q: label || question, a: text });
+        const entry = { q: label || question, a: text, hidden: false };
+        followupLog.push(entry);
+        if (opts.key) { docBlocks[opts.key] = { el: qa, entry }; if (opts.btn) opts.btn.classList.add("active"); }
         followupStatusEl.textContent = "";
       } catch (err) {
         aEl.textContent = "오류가 났어요: " + err.message;
+        qa.remove(); // 실패한 빈 블록은 제거 → 다시 누르면 재생성
+        if (opts.btn) opts.btn.classList.remove("active");
         followupStatusEl.textContent = "";
       } finally {
-        followupBtn.disabled = false; slideBtn.disabled = false;
+        setGenBusy(false);
       }
+    }
+    // 추가 문서 버튼: 처음엔 생성, 다시 누르면 닫기, 또 누르면 다시 열기(재생성 없음)
+    function toggleDoc(key, btn, prompt, label) {
+      const ex = docBlocks[key];
+      if (ex) {
+        const hidden = ex.el.classList.toggle("collapsed");
+        ex.entry.hidden = hidden; // 닫으면 인쇄·다운로드·공유에서도 제외
+        btn.classList.toggle("active", !hidden);
+        if (!hidden) ex.el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        return;
+      }
+      askFollowup(prompt, label, { key, btn });
     }
     followupBtn.addEventListener("click", () => {
       const q = followupQEl.value.trim();
       if (!q) { alert("질문을 입력해 주세요."); return; }
       followupQEl.value = "";
-      askFollowup(q, q);
+      askFollowup(q, q); // 자유 질문은 토글 대상 아님(계속 쌓임)
     });
-    slideBtn.addEventListener("click", () => askFollowup(
+    slideBtn.addEventListener("click", () => toggleDoc("slide", slideBtn,
       "위 조사 내용을 발표용 슬라이드 개요로 만들어줘. 슬라이드마다 '## 슬라이드 N: 제목' 소제목과 그 아래 핵심 불릿 3~5개로. 표지·목차·결론 슬라이드 포함, 총 7~10장 내외.",
       "📊 발표용 슬라이드 개요"
     ));
@@ -958,7 +988,8 @@ ${lines}
     }
     function exportMarkdown() {
       let md = `# ${lastTopic} — 교육 기획 조사 보고서\n작성일: ${new Date().toLocaleDateString("ko-KR")}\n\n${lastText}\n`;
-      if (followupLog.length) md += "\n\n---\n\n# 추가 질문\n\n" + followupLog.map((f) => `## ${f.q}\n\n${f.a}\n`).join("\n");
+      const visibleFu = followupLog.filter((f) => !f.hidden); // 닫은 문서는 제외
+      if (visibleFu.length) md += "\n\n---\n\n# 추가 문서·질문\n\n" + visibleFu.map((f) => `## ${f.q}\n\n${f.a}\n`).join("\n");
       const seen = new Set();
       const links = lastCites.filter((c) => c.uri && !seen.has(c.uri) && seen.add(c.uri));
       if (links.length) md += "\n\n---\n\n# 검색 출처\n\n" + links.map((w, i) => `${i + 1}. [${w.title || w.uri}](${w.uri})`).join("\n");
@@ -966,7 +997,9 @@ ${lines}
     }
     function exportDoc() {
       const css = "body{font-family:'Malgun Gothic',sans-serif;line-height:1.6;color:#222}h2,h3{color:#b5562f}table{border-collapse:collapse;width:100%}td,th{border:1px solid #ccc;padding:6px}img.logo{max-height:60px}.company{color:#b5562f;font-weight:700}";
-      const inner = printHeadEl.innerHTML + reportEl.innerHTML + followupEl.innerHTML +
+      // 닫은(collapsed) 추가 문서는 빼고, 열려 있는 것만 포함
+      const fuHtml = Array.from(followupEl.querySelectorAll(".qa:not(.collapsed)")).map((el) => el.outerHTML).join("");
+      const inner = printHeadEl.innerHTML + reportEl.innerHTML + fuHtml +
         (sourcesEl.innerHTML ? `<hr>${sourcesEl.innerHTML}` : "");
       return `<!DOCTYPE html><html><head><meta charset="utf-8"><style>${css}</style></head><body>${inner}</body></html>`;
     }
@@ -1200,30 +1233,30 @@ ${lines}
       if (total <= 0) return "";
       return `참고용 예산(이 도구 계산): 강사료 ${won(rate * hrs)}, 교재·운영비 ${won(mat * hc)}, 장소·기타 ${won(venue)}, 총 ${won(total)} (인원 ${hc}명·${hrs}시간 기준). 이 수치를 반영해줘.`;
     }
-    docApprovalBtn.addEventListener("click", () => askFollowup(
+    docApprovalBtn.addEventListener("click", () => toggleDoc("approval", docApprovalBtn,
       `위 조사 내용을 바탕으로 사내 결재용 '교육 품의서' 초안을 작성해줘. ${budgetSummaryText()}
 형식: 제목, '기안 목적' 2~3줄, 그리고 교육명/목적/대상/인원/일정/장소/예산/기대효과를 2열 마크다운 표로. 마지막 줄에 결재란 안내(담당–팀장–부서장). 확인 안 된 값은 [기재 필요]로 표시.`,
       "📋 교육 품의서 초안"
     ));
-    docPlanBtn.addEventListener("click", () => askFollowup(
+    docPlanBtn.addEventListener("click", () => toggleDoc("plan", docPlanBtn,
       `위 조사 내용을 바탕으로 '교육 운영 계획서'를 작성해줘. ${budgetSummaryText()}
 구성: ## 1. 배경·목적 / ## 2. 교육 대상 / ## 3. 커리큘럼(표) / ## 4. 운영 일정(표) / ## 5. 운영 방법(장소·형식·준비물) / ## 6. 예산 / ## 7. 평가 방법(KPI). 각 항목은 핵심 불릿 위주로 간결하게.`,
       "🗂 교육 운영 계획서"
     ));
-    docSurveyBtn.addEventListener("click", () => askFollowup(
+    docSurveyBtn.addEventListener("click", () => toggleDoc("survey", docSurveyBtn,
       `이 교육에 맞는 설문 문항을 만들어줘. 두 부분으로 나눠서:
 ## 사전 수요조사 설문 — 응답자 현황·니즈·기대 파악 문항 6~8개(객관식·리커트·주관식 혼합)
 ## 사후 만족도 설문 — 만족도·이해도·현업 적용도·개선점 문항 6~8개(리커트 5점 척도 위주, 주관식 1~2개 포함)
 각 문항은 번호 목록으로, 객관식 보기는 a) b) c) 형태로 함께 적어줘.`,
       "📝 설문 문항(사전·사후)"
     ));
-    docQABtn.addEventListener("click", () => askFollowup(
+    docQABtn.addEventListener("click", () => toggleDoc("qa", docQABtn,
       `위 조사·기획 내용을 임원에게 보고한다고 가정하고, 의사결정자(임원)가 던질 법한 날카롭고 현실적인 질문 10개와 각 질문의 설득력 있는 모범 답변을 만들어줘.
 형식: 각 항목을 "## Q1. 질문" 소제목 + 그 아래 "- 답변: ..." (핵심 근거·수치 포함, 2~3문장).
 예산 타당성 / 기대효과·측정 / 우선순위(왜 지금) / 리스크 / 대안 대비 우위 / 인원·시간 적정성 등 결재자가 따질 관점을 골고루 담아줘.`,
       "🎤 임원 예상질문 & 방어 답변"
     ));
-    docRedteamBtn.addEventListener("click", () => askFollowup(
+    docRedteamBtn.addEventListener("click", () => toggleDoc("redteam", docRedteamBtn,
       `너는 이 교육 기획을 통과시키지 않으려는 비판적 '레드팀' 심사위원이야. 위 기획의 약점을 냉정하게 공격해줘. 막연한 칭찬은 금지, 구체적으로.
 구성: ## 1. 핵심 약점(불릿, 각 약점마다 '왜 문제인지' 한 줄) / ## 2. 예상 리스크(실패 시나리오 포함) / ## 3. 반대 측 논리(이 교육을 안 해도 되는 이유) / ## 4. 그래서 보완하려면(앞의 각 지적에 대한 구체적 보완책).`,
       "🥊 레드팀 허점 검토"
@@ -1234,7 +1267,7 @@ ${lines}
     const b64decode = (b) => decodeURIComponent(escape(atob(b)));
     shareBtn.addEventListener("click", async () => {
       if (!lastText) return;
-      const payload = JSON.stringify({ t: lastTopic, x: lastText, c: lastCites, f: followupLog });
+      const payload = JSON.stringify({ t: lastTopic, x: lastText, c: lastCites, f: followupLog.filter((f) => !f.hidden) });
       const enc = encodeURIComponent(b64encode(payload));
       // 링크가 너무 길면 메신저 등에서 잘릴 수 있으니 한도 초과 시 안내
       if (enc.length > 16000) {
