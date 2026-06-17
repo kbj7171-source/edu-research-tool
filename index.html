@@ -5,27 +5,44 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>교육 기획 근거 도우미 — Gemini 검색 조사</title>
   <style>
-    /* 비개발자가 봐도 부담 없도록 색·여백을 단순하게 유지 */
-    :root { --line: #d9d4c7; --accent: #b5562f; --bg: #f4f1ea; }
+    /* 색을 전부 변수로 두어 다크모드를 한 곳에서 전환. 라이트가 기본값. */
+    :root {
+      --bg: #f4f1ea; --card: #fff; --text: #2b2b2b; --sub: #7a746a; --muted: #9a948a;
+      --line: #d9d4c7; --soft-line: #eee4d3; --accent: #b5562f;
+      --input-bg: #fffdf8; --soft: #faf6ee; --table-head: #f6efe2; --table-line: #e7e0d2;
+      --hint: #8a847a; --bar-bg: #efe9dd; --qa-bg: #fbf8f1;
+      --warn-bg: #fbf3e7; --warn-line: #ecd9bf; --warn-text: #8a5a2b; --chip-bg: #f1ebdd;
+    }
+    /* 다크모드: <html data-theme="dark">일 때만 적용 */
+    :root[data-theme="dark"] {
+      --bg: #1c1a17; --card: #26231f; --text: #e9e4d9; --sub: #b3ac9e; --muted: #8f897d;
+      --line: #403b34; --soft-line: #3a352d; --accent: #e08a63;
+      --input-bg: #201e1a; --soft: #2f2a23; --table-head: #332e26; --table-line: #3f3a32;
+      --hint: #9a9385; --bar-bg: #3a352d; --qa-bg: #2b2720;
+      --warn-bg: #3a2f20; --warn-line: #5a4a30; --warn-text: #e0b483; --chip-bg: #332e26;
+    }
     * { box-sizing: border-box; }
     body {
       margin: 0; padding: 24px;
       background: var(--bg);
       font-family: "Malgun Gothic", "맑은 고딕", system-ui, sans-serif;
-      color: #2b2b2b; line-height: 1.6;
+      color: var(--text); line-height: 1.6;
+      transition: background .2s, color .2s;
     }
     .wrap { max-width: 760px; margin: 0 auto; }
+    /* 제목줄: 왼쪽 제목, 오른쪽 다크모드 토글 */
+    .topbar { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
     h1 { font-size: 22px; margin: 0 0 4px; }
-    .sub { color: #7a746a; font-size: 14px; margin: 0 0 20px; }
+    .sub { color: var(--sub); font-size: 14px; margin: 0 0 20px; }
     .card {
-      background: #fff; border: 1px solid var(--line); border-radius: 12px;
+      background: var(--card); border: 1px solid var(--line); border-radius: 12px;
       padding: 20px; margin-bottom: 16px;
     }
     label.field { display: block; font-weight: 600; font-size: 14px; margin: 12px 0 6px; }
     input[type="text"], input[type="password"], select, textarea {
       width: 100%; padding: 10px 12px; font-size: 15px;
       border: 1px solid var(--line); border-radius: 8px; font-family: inherit;
-      background: #fffdf8;
+      background: var(--input-bg); color: var(--text);
     }
     textarea { resize: vertical; min-height: 70px; line-height: 1.5; }
     .row { display: flex; gap: 12px; }
@@ -35,37 +52,48 @@
       color: #fff; background: var(--accent); border: none; border-radius: 8px; cursor: pointer;
     }
     button:disabled { background: #b9b3a7; cursor: not-allowed; }
-    button.ghost { background: #fff; color: var(--accent); border: 1px solid var(--accent); }
-    .hint { font-size: 12px; color: #8a847a; margin-top: 6px; }
+    button.ghost { background: var(--card); color: var(--accent); border: 1px solid var(--accent); }
+    .hint { font-size: 12px; color: var(--hint); margin-top: 6px; }
     .warn {
-      font-size: 12px; color: #8a5a2b; background: #fbf3e7;
-      border: 1px solid #ecd9bf; border-radius: 8px; padding: 8px 10px; margin-top: 8px;
+      font-size: 12px; color: var(--warn-text); background: var(--warn-bg);
+      border: 1px solid var(--warn-line); border-radius: 8px; padding: 8px 10px; margin-top: 8px;
     }
     .checks { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; margin-top: 8px; }
     .checks label { display: flex; gap: 8px; align-items: flex-start; font-size: 14px; font-weight: 400; cursor: pointer; }
     .checks input { margin-top: 4px; }
     .toolbar { font-size: 13px; margin-top: 6px; }
     .toolbar a { color: var(--accent); cursor: pointer; text-decoration: underline; margin-right: 10px; }
-    #status { font-size: 13px; color: #7a746a; margin-top: 8px; min-height: 18px; }
-    .muted { color: #9a948a; }
+    #status { font-size: 13px; color: var(--sub); margin-top: 8px; min-height: 18px; }
+    .muted { color: var(--muted); }
+
+    /* 연관 키워드 추천 칩 */
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .chip {
+      background: var(--chip-bg); border: 1px solid var(--line); color: var(--text);
+      border-radius: 999px; padding: 5px 11px; font-size: 13px; cursor: pointer;
+    }
+    .chip:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* 표지 로고 미리보기 */
+    #logoPreview { max-height: 44px; margin-top: 8px; display: none; border: 1px solid var(--line); border-radius: 6px; padding: 4px; background: #fff; }
 
     /* --- 보고서: 웹 대시보드처럼 카드(칸)로 분리 --- */
     #report {
-      font-size: 15px; color: #2b2b2b;
+      font-size: 15px; color: var(--text);
       display: grid; grid-template-columns: 1fr;
       gap: 14px; align-items: start;
     }
     /* 각 섹션·그래프를 하나의 카드로 */
     #report > .sec, #report > .chart {
-      background: #fff; border: 1px solid var(--line); border-radius: 10px;
+      background: var(--card); border: 1px solid var(--line); border-radius: 10px;
       padding: 16px; margin: 0; box-shadow: 0 1px 3px rgba(0, 0, 0, .04);
     }
     #report .sec > h3 {
       font-size: 15px; font-weight: 700; color: var(--accent);
-      margin: 0 0 10px; padding-bottom: 8px; border-bottom: 1px solid #eee4d3;
+      margin: 0 0 10px; padding-bottom: 8px; border-bottom: 1px solid var(--soft-line);
     }
     /* 요약·그래프는 한 줄 전체 폭으로 강조 */
-    #report .sec.summary { grid-column: 1 / -1; background: #faf6ee; border-left: 4px solid var(--accent); }
+    #report .sec.summary { grid-column: 1 / -1; background: var(--soft); border-left: 4px solid var(--accent); }
     #report > .chart { grid-column: 1 / -1; }
     #report h4 { font-size: 14px; margin: 12px 0 4px; }
     #report ul { margin: 0; padding-left: 4px; list-style: none; }
@@ -81,29 +109,29 @@
     #report strong { font-weight: 700; }
     /* 커리큘럼 등 표 형태 */
     #report table.tbl { width: 100%; border-collapse: collapse; margin: 4px 0; font-size: 13.5px; }
-    #report table.tbl th, #report table.tbl td { border: 1px solid #e7e0d2; padding: 6px 8px; text-align: left; vertical-align: top; }
-    #report table.tbl thead th { background: #f6efe2; font-weight: 700; }
+    #report table.tbl th, #report table.tbl td { border: 1px solid var(--table-line); padding: 6px 8px; text-align: left; vertical-align: top; }
+    #report table.tbl thead th { background: var(--table-head); font-weight: 700; }
 
     /* 가독성 보조용 간단 막대 그래프 (제안 시간 배분) */
     #report .chart .chart-title { font-weight: 700; color: var(--accent); margin-bottom: 10px; }
     .bar-row { display: flex; align-items: center; gap: 8px; margin: 5px 0; font-size: 13px; }
     .bar-label { flex: 0 0 140px; }
-    .bar { flex: 1; background: #efe9dd; border-radius: 6px; height: 14px; overflow: hidden; }
+    .bar { flex: 1; background: var(--bar-bg); border-radius: 6px; height: 14px; overflow: hidden; }
     .bar > span { display: block; height: 100%; background: var(--accent); }
-    .bar-val { flex: 0 0 52px; text-align: right; color: #7a746a; }
+    .bar-val { flex: 0 0 52px; text-align: right; color: var(--sub); }
 
     #sources { margin-top: 16px; font-size: 13px; border-top: 1px dashed var(--line); padding-top: 12px; }
     #sources a { color: var(--accent); }
     #sources ol { margin: 8px 0 0; padding-left: 22px; }
     #sources li { margin: 4px 0; }
-    #sources .host { color: #9a948a; font-size: 12px; }
+    #sources .host { color: var(--muted); font-size: 12px; }
 
     /* 작은 보조 도구줄(프리셋·기록·다운로드 등) */
     .minirow { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; }
     .minirow select { width: auto; flex: 1 1 160px; padding: 8px 10px; font-size: 13px; }
     .btn-sm {
       margin: 0; padding: 8px 12px; font-size: 13px; font-weight: 600;
-      background: #fff; color: var(--accent); border: 1px solid var(--accent); border-radius: 8px; cursor: pointer;
+      background: var(--card); color: var(--accent); border: 1px solid var(--accent); border-radius: 8px; cursor: pointer;
     }
     .btn-sm.solid { background: var(--accent); color: #fff; border-color: var(--accent); }
     .btn-sm:disabled { opacity: .5; cursor: not-allowed; }
@@ -111,29 +139,29 @@
 
     /* 이전 기록 목록 */
     #historyList { list-style: none; margin: 8px 0 0; padding: 0; }
-    #historyList li { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-top: 1px solid #f0eadd; }
+    #historyList li { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-top: 1px solid var(--soft-line); }
     #historyList li:first-child { border-top: none; }
-    #historyList .h-load { flex: 1; text-align: left; background: none; border: none; color: #2b2b2b; cursor: pointer; padding: 0; font-size: 14px; font-family: inherit; }
+    #historyList .h-load { flex: 1; text-align: left; background: none; border: none; color: var(--text); cursor: pointer; padding: 0; font-size: 14px; font-family: inherit; }
     #historyList .h-load:hover { color: var(--accent); text-decoration: underline; }
-    #historyList .h-date { color: #9a948a; font-size: 12px; }
-    #historyList .h-del { background: none; border: none; color: #b9b3a7; cursor: pointer; font-size: 15px; padding: 0 4px; margin: 0; }
+    #historyList .h-date { color: var(--muted); font-size: 12px; }
+    #historyList .h-del { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 15px; padding: 0 4px; margin: 0; }
     #historyList .h-del:hover { color: var(--accent); }
 
     /* 예산 계산기 */
     #budget table.budget { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 14px; }
-    #budget table.budget th, #budget table.budget td { border: 1px solid #e7e0d2; padding: 8px 10px; }
+    #budget table.budget th, #budget table.budget td { border: 1px solid var(--table-line); padding: 8px 10px; }
     #budget table.budget td.num, #budget table.budget th.num { text-align: right; }
-    #budget table.budget tfoot td { font-weight: 700; background: #faf6ee; }
+    #budget table.budget tfoot td { font-weight: 700; background: var(--soft); }
     #budget input[type="number"] {
       width: 100%; padding: 8px 10px; font-size: 14px; text-align: right;
-      border: 1px solid var(--line); border-radius: 8px; background: #fffdf8; font-family: inherit;
+      border: 1px solid var(--line); border-radius: 8px; background: var(--input-bg); color: var(--text); font-family: inherit;
     }
     .bgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 14px; }
     .bgrid label { font-size: 13px; font-weight: 600; display: block; margin-bottom: 4px; }
 
     /* 후속 질문 / 슬라이드 결과 */
     #followup { display: grid; gap: 12px; }
-    #followup .qa { background: #fbf8f1; border: 1px solid var(--line); border-radius: 10px; padding: 14px; }
+    #followup .qa { background: var(--qa-bg); border: 1px solid var(--line); border-radius: 10px; padding: 14px; }
     #followup .qa .q { font-weight: 700; color: var(--accent); margin-bottom: 8px; }
 
     /* 인쇄 헤더는 화면에선 숨기고 인쇄할 때만 보이게 */
@@ -141,11 +169,19 @@
 
     /* --- 인쇄/PDF 저장: 입력 영역은 빼고 보고서만 깔끔하게 --- */
     @media print {
+      /* 다크모드여도 인쇄는 항상 흰 배경·검정 글씨로(잉크 절약·가독성) */
+      :root, :root[data-theme="dark"] {
+        --bg: #fff; --card: #fff; --text: #222; --sub: #666; --muted: #888;
+        --line: #ccc; --soft-line: #ddd; --soft: #faf6ee;
+        --table-head: #f6efe2; --table-line: #ddd; --hint: #666; --qa-bg: #faf8f3;
+      }
       body { background: #fff; padding: 0; }
       .no-print { display: none !important; }
       .card { border: none; border-radius: 0; padding: 0; margin: 0; }
-      #printHead { display: block; margin-bottom: 16px; }
-      #printHead h2 { margin: 0; font-size: 20px; }
+      #printHead { display: block; margin-bottom: 16px; border-bottom: 2px solid var(--accent); padding-bottom: 10px; }
+      #printHead img.logo { max-height: 50px; margin-bottom: 8px; display: block; }
+      #printHead .company { font-size: 14px; font-weight: 700; color: var(--accent); }
+      #printHead h2 { margin: 4px 0 0; font-size: 20px; }
       #printHead .meta { color: #666; font-size: 13px; }
       /* 인쇄는 카드 그리드 대신 한 줄로 쌓아 깔끔하게 */
       #report { display: block; }
@@ -168,8 +204,13 @@
 </head>
 <body>
   <div class="wrap">
-    <h1 class="no-print">교육 기획 근거 도우미 — Gemini 검색 조사</h1>
-    <p class="sub no-print">조사할 항목·범위·분량을 골라서, 내 Gemini가 웹 검색으로 정리합니다.</p>
+    <div class="topbar no-print">
+      <div>
+        <h1>교육 기획 근거 도우미 — Gemini 검색 조사</h1>
+        <p class="sub">조사할 항목·범위·분량을 골라서, 내 Gemini가 웹 검색으로 정리합니다.</p>
+      </div>
+      <button id="themeToggle" class="btn-sm" title="밝게/어둡게 전환" style="margin-top:2px;">🌙 다크</button>
+    </div>
 
     <!-- API 키: 코드에 박지 않고 사용자가 직접 입력 → 브라우저 안에만 보관 -->
     <div class="card no-print">
@@ -191,6 +232,31 @@
           <label class="field" for="industry">우리 회사 업종/맥락 (선택)</label>
           <input type="text" id="industry" placeholder="예: 출판/미디어, 대기업" />
         </div>
+      </div>
+      <button id="kwBtn" class="btn-sm" style="margin-top:10px;">🔍 연관 키워드 추천</button>
+      <span id="kwStatus" class="hint" style="margin-left:8px;"></span>
+      <div class="chips" id="kwChips"></div>
+    </div>
+
+    <!-- 인쇄/PDF/Word 표지에 들어갈 회사명·작성자·로고 (한 번 설정하면 브라우저에 저장됨) -->
+    <div class="card no-print">
+      <div class="section-title">📄 보고서 표지 설정 (인쇄·PDF·Word용)</div>
+      <div class="row">
+        <div>
+          <label class="field" for="company">회사·부서명</label>
+          <input type="text" id="company" placeholder="예: 한빛미디어 인재개발팀" />
+        </div>
+        <div>
+          <label class="field" for="author">작성자</label>
+          <input type="text" id="author" placeholder="예: 홍길동" />
+        </div>
+      </div>
+      <label class="field" for="logo">로고 이미지 (선택)</label>
+      <input type="file" id="logo" accept="image/*" />
+      <img id="logoPreview" alt="로고 미리보기" />
+      <div class="minirow">
+        <button id="logoClear" class="btn-sm">로고 제거</button>
+        <span class="hint" style="margin:0;">로고·회사명·작성자는 이 브라우저에만 저장되며, 보고서 맨 위(표지)에 표시됩니다.</span>
       </div>
     </div>
 
@@ -366,6 +432,10 @@
     const historyCardEl = $("historyCard"), historyListEl = $("historyList"), historyClearBtn = $("historyClear");
     const budgetOutEl = $("budget"), bStatusEl = $("bStatus"), bEstimateBtn = $("bEstimate");
     const bInputs = ["bHeadcount", "bHours", "bRate", "bMaterial", "bVenue"].map($);
+    const themeToggleEl = $("themeToggle");
+    const kwBtn = $("kwBtn"), kwStatusEl = $("kwStatus"), kwChipsEl = $("kwChips");
+    const companyEl = $("company"), authorEl = $("author");
+    const logoEl = $("logo"), logoPreviewEl = $("logoPreview"), logoClearBtn = $("logoClear");
 
     apiKeyEl.value = localStorage.getItem("gemini_api_key") || "";
     apiKeyEl.addEventListener("change", () =>
@@ -397,12 +467,14 @@
     }
 
     // 스트리밍 호출: 글이 도착하는 대로 onText(누적 텍스트)를 호출. 끝나면 {text, cites} 반환.
-    async function callGeminiStream(model, apiKey, contents, onText) {
+    async function callGeminiStream(model, apiKey, contents, onText, useSearch = true) {
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${encodeURIComponent(apiKey)}`;
+      const body = { contents };
+      if (useSearch) body.tools = [{ google_search: {} }]; // 키워드 추천 등은 검색 없이 더 빠르게
       const res = await fetch(url, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ contents, tools: [{ google_search: {} }] }),
+        body: JSON.stringify(body),
       });
       if (!res.ok || !res.body) {
         let detail = `HTTP ${res.status}`;
@@ -437,11 +509,11 @@
     }
 
     // 혼잡하면 잠시 기다렸다 재시도하고, 그래도 안 되면 다음 모델로 자동 전환
-    async function runGemini(apiKey, contents, onText) {
+    async function runGemini(apiKey, contents, onText, useSearch = true) {
       let lastErr = null;
       for (const model of MODELS) {
         for (let attempt = 1; attempt <= 2; attempt++) {
-          try { return await callGeminiStream(model, apiKey, contents, onText); }
+          try { return await callGeminiStream(model, apiKey, contents, onText, useSearch); }
           catch (e) {
             lastErr = e;
             if (!e.retryable) throw e; // 진짜 오류(키 오류 등)는 즉시 표시
@@ -690,9 +762,7 @@ ${lines}
       const cm = text.match(/```\s*시간배분\s*\n([\s\S]*?)```/);
       if (cm) { chartHtml = renderChart(cm[1]); body = text.replace(cm[0], "").trim(); }
       reportEl.innerHTML = text ? (renderMarkdown(body) + chartHtml) : "(빈 응답)";
-      printHeadEl.innerHTML =
-        `<h2>${escapeHtml(topic)} — 교육 기획 조사 보고서</h2>` +
-        `<div class="meta">작성일: ${new Date().toLocaleDateString("ko-KR")}</div>`;
+      printHeadEl.innerHTML = buildCoverHtml(topic);
       renderSources(lastCites);
       resultToolsEl.style.display = text ? "block" : "none";
       if (save && text) saveHistoryRecord({ topic, industry: lastIndustry, text, cites: lastCites });
@@ -795,7 +865,7 @@ ${lines}
       return md;
     }
     function exportDoc() {
-      const css = "body{font-family:'Malgun Gothic',sans-serif;line-height:1.6;color:#222}h2,h3{color:#b5562f}table{border-collapse:collapse;width:100%}td,th{border:1px solid #ccc;padding:6px}";
+      const css = "body{font-family:'Malgun Gothic',sans-serif;line-height:1.6;color:#222}h2,h3{color:#b5562f}table{border-collapse:collapse;width:100%}td,th{border:1px solid #ccc;padding:6px}img.logo{max-height:60px}.company{color:#b5562f;font-weight:700}";
       const inner = printHeadEl.innerHTML + reportEl.innerHTML + followupEl.innerHTML +
         (sourcesEl.innerHTML ? `<hr>${sourcesEl.innerHTML}` : "");
       return `<!DOCTYPE html><html><head><meta charset="utf-8"><style>${css}</style></head><body>${inner}</body></html>`;
@@ -947,7 +1017,84 @@ ${lines}
     }
     bEstimateBtn.addEventListener("click", estimateBudget);
 
+    // --- 보고서 표지(로고·회사명·작성자) ---
+    function buildCoverHtml(topic) {
+      const logo = localStorage.getItem("edu_logo") || "";
+      const company = (companyEl.value || "").trim();
+      const author = (authorEl.value || "").trim();
+      const date = new Date().toLocaleDateString("ko-KR");
+      return (logo ? `<img class="logo" src="${logo}" alt="logo" />` : "") +
+        (company ? `<div class="company">${escapeHtml(company)}</div>` : "") +
+        `<h2>${escapeHtml(topic)} — 교육 기획 조사 보고서</h2>` +
+        `<div class="meta">작성일: ${date}${author ? " · 작성자: " + escapeHtml(author) : ""}</div>`;
+    }
+    companyEl.value = localStorage.getItem("edu_company") || "";
+    authorEl.value = localStorage.getItem("edu_author") || "";
+    companyEl.addEventListener("change", () => localStorage.setItem("edu_company", companyEl.value.trim()));
+    authorEl.addEventListener("change", () => localStorage.setItem("edu_author", authorEl.value.trim()));
+    function refreshLogoPreview() {
+      const logo = localStorage.getItem("edu_logo") || "";
+      if (logo) { logoPreviewEl.src = logo; logoPreviewEl.style.display = "block"; }
+      else { logoPreviewEl.removeAttribute("src"); logoPreviewEl.style.display = "none"; }
+    }
+    logoEl.addEventListener("change", () => {
+      const file = logoEl.files && logoEl.files[0];
+      if (!file) return;
+      // 로고는 dataURL로 localStorage에 저장 → 용량 제한 둬서 저장 한도 초과 방지
+      if (file.size > 1.5 * 1024 * 1024) { alert("로고는 1.5MB 이하 이미지로 올려 주세요."); logoEl.value = ""; return; }
+      const reader = new FileReader();
+      reader.onload = () => {
+        try { localStorage.setItem("edu_logo", reader.result); refreshLogoPreview(); }
+        catch (_) { alert("로고 저장에 실패했어요(용량 초과). 더 작은 이미지를 써 주세요."); }
+      };
+      reader.readAsDataURL(file);
+    });
+    logoClearBtn.addEventListener("click", () => { localStorage.removeItem("edu_logo"); logoEl.value = ""; refreshLogoPreview(); });
+
+    // --- 다크모드 ---
+    function applyTheme(t) {
+      if (t === "dark") { document.documentElement.setAttribute("data-theme", "dark"); themeToggleEl.textContent = "☀️ 라이트"; }
+      else { document.documentElement.removeAttribute("data-theme"); themeToggleEl.textContent = "🌙 다크"; }
+    }
+    themeToggleEl.addEventListener("click", () => {
+      const dark = document.documentElement.getAttribute("data-theme") === "dark";
+      const next = dark ? "light" : "dark";
+      localStorage.setItem("edu_theme", next); applyTheme(next);
+    });
+
+    // --- 연관 키워드 추천 ---
+    async function recommendKeywords() {
+      const apiKey = apiKeyEl.value.trim();
+      const topic = topicEl.value.trim();
+      if (!apiKey) { alert("Gemini API 키를 입력해 주세요."); return; }
+      if (!topic) { alert("교육 주제 키워드를 먼저 입력해 주세요."); return; }
+      kwBtn.disabled = true; kwStatusEl.textContent = "추천 중… ⏳"; kwChipsEl.innerHTML = "";
+      const industry = industryEl.value.trim();
+      const prompt = `기업교육 주제 '${topic}'${industry ? ` (회사 맥락: ${industry})` : ""}와 관련해, 교육 기획에 쓸 만한 더 구체적인 세부 주제·키워드 8개를 추천해줘. 설명 없이 키워드만, 쉼표로 구분한 한 줄로만 출력해.`;
+      try {
+        const { text } = await runGemini(apiKey, [userTurn(prompt)], null, false); // 검색 없이 빠르게
+        const kws = text.replace(/```[\s\S]*?```/g, "").split(/[,\n·]/)
+          .map((s) => s.replace(/^[\s\-\d.)]+/, "").trim())
+          .filter((s) => s && s.length <= 30).slice(0, 10);
+        if (!kws.length) { kwStatusEl.textContent = "추천 결과가 없어요."; return; }
+        kwChipsEl.innerHTML = kws.map((k) => `<span class="chip">${escapeHtml(k)}</span>`).join("");
+        kwStatusEl.textContent = "클릭하면 주제 칸에 넣습니다.";
+      } catch (err) {
+        kwStatusEl.textContent = "오류: " + err.message;
+      } finally {
+        kwBtn.disabled = false;
+      }
+    }
+    kwBtn.addEventListener("click", recommendKeywords);
+    kwChipsEl.addEventListener("click", (e) => {
+      if (!e.target.classList.contains("chip")) return;
+      topicEl.value = e.target.textContent;
+      kwStatusEl.textContent = `주제를 '${e.target.textContent}'(으)로 바꿨어요.`;
+    });
+
     // --- 초기화 ---
+    applyTheme(localStorage.getItem("edu_theme") || "light");
+    refreshLogoPreview();
     renderPresetOptions();
     renderHistory();
     computeBudget();
