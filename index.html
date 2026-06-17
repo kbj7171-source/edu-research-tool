@@ -163,18 +163,26 @@
     #budget table.budget th, #budget table.budget td { border: 1px solid var(--table-line); padding: 8px 10px; }
     #budget table.budget td.num, #budget table.budget th.num { text-align: right; }
     #budget table.budget tfoot td { font-weight: 700; background: var(--soft); }
-    #budget input[type="number"] {
-      width: 100%; padding: 13px 14px; font-size: 15px; font-weight: 600; text-align: right;
-      border: 1px solid var(--line); border-radius: 14px; background: var(--input-bg);
-      color: var(--text); font-family: inherit; transition: border-color .15s, background .15s;
+    .bgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    /* 토스식 금액 입력 박스: 라벨 위 + 큰 숫자 + 단위 우측, 박스 전체가 포커스 영역 */
+    .bfield {
+      display: block; background: var(--input-bg); border: 1.5px solid var(--line);
+      border-radius: 14px; padding: 10px 14px; cursor: text;
+      transition: border-color .15s, background .15s;
+    }
+    .bfield:focus-within { border-color: var(--accent); background: var(--card); }
+    .bfield .blabel { display: block; font-size: 12px; font-weight: 600; color: var(--sub); margin-bottom: 3px; }
+    .bfield .inwrap { display: flex; align-items: baseline; gap: 6px; }
+    .bfield input[type="number"] {
+      flex: 1; width: 100%; min-width: 0; border: none; background: transparent; padding: 0;
+      font-family: inherit; font-size: 18px; font-weight: 700; color: var(--text); text-align: left;
       -moz-appearance: textfield;
     }
-    /* 숫자 입력 화살표(스피너) 숨겨서 토스처럼 깔끔하게 */
-    #budget input[type="number"]::-webkit-outer-spin-button,
-    #budget input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-    #budget input[type="number"]:focus { outline: none; border-color: var(--accent); background: var(--card); }
-    .bgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-    .bgrid label { font-size: 13px; font-weight: 600; color: var(--sub); display: block; margin-bottom: 6px; }
+    .bfield input[type="number"]:focus { outline: none; }
+    /* 숫자 입력 화살표(스피너) 숨겨서 깔끔하게 */
+    .bfield input[type="number"]::-webkit-outer-spin-button,
+    .bfield input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+    .bfield .unit { flex: 0 0 auto; font-size: 13px; font-weight: 600; color: var(--muted); }
 
     /* 후속 질문 / 슬라이드·품의서·계획서·설문 등 생성 결과 */
     #followup { display: grid; gap: 12px; }
@@ -468,11 +476,11 @@
       <div class="section-title">💰 예산 계산기</div>
       <div class="hint" style="margin-bottom:10px;">단가를 직접 입력하거나, AI 추정으로 한 번에 채운 뒤 수정하세요. 숫자를 바꾸면 합계가 자동 계산됩니다.</div>
       <div class="bgrid">
-        <div><label for="bHeadcount">교육 인원(명)</label><input type="number" id="bHeadcount" min="0" value="20" /></div>
-        <div><label for="bHours">총 교육 시간(시간)</label><input type="number" id="bHours" min="0" value="4" /></div>
-        <div><label for="bRate">강사료(시간당, 원)</label><input type="number" id="bRate" min="0" value="0" /></div>
-        <div><label for="bMaterial">1인당 교재·운영비(원)</label><input type="number" id="bMaterial" min="0" value="0" /></div>
-        <div><label for="bVenue">장소·기타 비용(원)</label><input type="number" id="bVenue" min="0" value="0" /></div>
+        <label class="bfield"><span class="blabel">교육 인원</span><span class="inwrap"><input type="number" id="bHeadcount" min="0" value="20" /><span class="unit">명</span></span></label>
+        <label class="bfield"><span class="blabel">총 교육 시간</span><span class="inwrap"><input type="number" id="bHours" min="0" value="4" /><span class="unit">시간</span></span></label>
+        <label class="bfield"><span class="blabel">강사료 (시간당)</span><span class="inwrap"><input type="number" id="bRate" min="0" value="0" /><span class="unit">원</span></span></label>
+        <label class="bfield"><span class="blabel">1인당 교재·운영비</span><span class="inwrap"><input type="number" id="bMaterial" min="0" value="0" /><span class="unit">원</span></span></label>
+        <label class="bfield"><span class="blabel">장소·기타 비용</span><span class="inwrap"><input type="number" id="bVenue" min="0" value="0" /><span class="unit">원</span></span></label>
       </div>
       <div class="minirow">
         <button id="bEstimate" class="btn-sm solid">AI로 단가 추정해 채우기</button>
