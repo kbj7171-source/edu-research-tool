@@ -173,10 +173,18 @@
     .bgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
     .bgrid label { font-size: 13px; font-weight: 600; color: var(--sub); display: block; margin-bottom: 6px; }
 
-    /* 후속 질문 / 슬라이드 결과 */
+    /* 후속 질문 / 슬라이드·품의서·계획서·설문 등 생성 결과 */
     #followup { display: grid; gap: 12px; }
-    #followup .qa { background: var(--qa-bg); border: 1px solid var(--line); border-radius: 10px; padding: 14px; }
+    #followup .qa { background: var(--qa-bg); border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
     #followup .qa .q { font-weight: 700; color: var(--accent); margin-bottom: 8px; }
+    #followup .qa .a h3 { font-size: 15px; font-weight: 700; color: var(--accent); margin: 14px 0 6px; }
+    #followup .qa .a section { margin: 0 0 8px; }
+    #followup .qa .a ul { margin: 4px 0; padding-left: 18px; }
+    #followup .qa .a ol { margin: 4px 0; padding-left: 20px; }
+    #followup .qa .a li { margin: 4px 0; }
+    #followup .qa .a table.tbl { width: 100%; border-collapse: collapse; font-size: 13.5px; margin: 8px 0; }
+    #followup .qa .a table.tbl th, #followup .qa .a table.tbl td { border: 1px solid var(--table-line); padding: 6px 8px; text-align: left; vertical-align: top; }
+    #followup .qa .a table.tbl thead th { background: var(--table-head); font-weight: 700; }
 
     /* 인쇄 헤더는 화면에선 숨기고 인쇄할 때만 보이게 */
     #printHead { display: none; }
@@ -213,6 +221,8 @@
       .bgrid { grid-template-columns: 1fr; }
       .bar-label { flex: 0 0 96px; }
       h1 { font-size: 19px; }
+      /* 열이 많은 커리큘럼 표는 좁은 화면에서 가로 스크롤 */
+      #report table.tbl, #followup .qa .a table.tbl { display: block; overflow-x: auto; white-space: nowrap; }
     }
   </style>
 </head>
@@ -388,12 +398,21 @@
       <div id="followup"></div>
 
       <div class="no-print" id="resultTools" style="display:none;">
+        <div class="section-title" style="margin-top:4px;">AI로 추가 문서 만들기</div>
         <div class="minirow">
-          <button id="copy" class="btn-sm">복사하기</button>
-          <button id="dlMd" class="btn-sm">Markdown(.md) 저장</button>
+          <button id="slide" class="btn-sm">📊 슬라이드 개요</button>
+          <button id="docApproval" class="btn-sm">📋 품의서 초안</button>
+          <button id="docPlan" class="btn-sm">🗂 교육 계획서</button>
+          <button id="docSurvey" class="btn-sm">📝 설문 문항(사전·사후)</button>
+        </div>
+
+        <div class="section-title" style="margin-top:14px;">저장 · 공유</div>
+        <div class="minirow">
+          <button id="copy" class="btn-sm">복사</button>
+          <button id="dlMd" class="btn-sm">.md 저장</button>
           <button id="dlDoc" class="btn-sm">Word(.doc) 저장</button>
-          <button id="print" class="btn-sm">인쇄 / PDF 저장</button>
-          <button id="slide" class="btn-sm">발표용 슬라이드 개요</button>
+          <button id="print" class="btn-sm">인쇄 / PDF</button>
+          <button id="shareBtn" class="btn-sm">🔗 공유 링크 복사</button>
         </div>
 
         <!-- 결과에 대해 이어서 질문 -->
@@ -423,12 +442,18 @@
     </div>
 
     <!-- 이전 조사 기록(이 브라우저에만 저장) -->
-    <div class="card no-print" id="historyCard" style="display:none;">
+    <div class="card no-print" id="historyCard">
       <div class="minirow" style="justify-content:space-between;">
         <div class="section-title" style="margin:0;">🕘 이전 조사 기록</div>
-        <button id="historyClear" class="btn-sm">전체 삭제</button>
+        <div class="minirow" style="margin:0;">
+          <button id="historyExport" class="btn-sm">내보내기(JSON)</button>
+          <button id="historyImport" class="btn-sm">가져오기</button>
+          <button id="historyClear" class="btn-sm">전체 삭제</button>
+        </div>
       </div>
+      <input type="file" id="historyImportFile" accept="application/json,.json" style="display:none;" />
       <ul id="historyList"></ul>
+      <div id="historyEmpty" class="hint" style="display:none;">아직 저장된 기록이 없습니다. 조사를 실행하면 자동 저장돼요.</div>
     </div>
   </div>
 
@@ -441,7 +466,9 @@
     const reportEl = $("report"), sourcesEl = $("sources"), statusEl = $("status"), printHeadEl = $("printHead");
     const runBtn = $("run"), copyBtn = $("copy"), printBtn = $("print"), checksEl = $("checks");
     const followupEl = $("followup"), resultToolsEl = $("resultTools");
-    const dlMdBtn = $("dlMd"), dlDocBtn = $("dlDoc"), slideBtn = $("slide");
+    const dlMdBtn = $("dlMd"), dlDocBtn = $("dlDoc"), slideBtn = $("slide"), shareBtn = $("shareBtn");
+    const docApprovalBtn = $("docApproval"), docPlanBtn = $("docPlan"), docSurveyBtn = $("docSurvey");
+    const historyExportBtn = $("historyExport"), historyImportBtn = $("historyImport"), historyImportFileEl = $("historyImportFile"), historyEmptyEl = $("historyEmpty");
     const followupQEl = $("followupQ"), followupBtn = $("followupBtn"), followupStatusEl = $("followupStatus");
     const presetSelEl = $("presetSel"), presetSaveBtn = $("presetSave"), presetDelBtn = $("presetDel");
     const historyCardEl = $("historyCard"), historyListEl = $("historyList"), historyClearBtn = $("historyClear");
@@ -607,11 +634,13 @@
 - '내가 할 일(기획 실행 순서)' 항목만은 불릿("-") 대신 "1. 2. 3." 번호 목록으로, 가장 먼저 할 일부터 순서대로 단계별로 써줘. 각 단계도 한 줄로 짧게.` : "";
       // 커리큘럼은 모듈별 4열 표로 구체화해서 받는다
       const curriculumRule = chosen.includes("curriculum") ? `
-- '대표 커리큘럼 구성' 항목은 불릿 대신 아래 마크다운 표로 써줘. 모듈마다 한 줄씩.
-| 모듈명 | 모듈 내용 | 교육 형태 | 시간 |
-| --- | --- | --- | --- |
-| AI 기초 이해 | 생성형 AI 개념과 업무 활용 사례 | 강의 | 30분 |
-교육 형태는 강의 / 실습 / 워크숍 / 토론 중에서 골라 적고, 시간은 분 또는 시간 단위로 적어줘.` : "";
+- '대표 커리큘럼 구성' 항목은 불릿 대신 아래 마크다운 표로 써줘. 모듈마다 한 줄씩, 5~7개 모듈 정도로.
+| 모듈명 | 세부 학습 내용(다루는 소주제) | 학습 목표 | 교육 형태 | 시간 |
+| --- | --- | --- | --- | --- |
+| AI 기초 이해 | 생성형 AI 작동 원리 / 주요 도구 비교 / 업무 적용 사례 | AI 개념을 이해하고 어디에 쓸지 판단 | 강의 | 30분 |
+- '세부 학습 내용' 칸에는 그 모듈에서 실제로 다루는 구체적 소주제를 2~3개, ' / '로 구분해서 적어줘. "기초 학습" 같은 막연한 표현 말고 구체적으로.
+- '학습 목표' 칸에는 그 모듈을 마치면 무엇을 할 수 있게 되는지 한 줄로.
+- 교육 형태는 강의 / 실습 / 워크숍 / 토론 중에서 고르고, 시간은 분 또는 시간 단위로 적어줘.` : "";
       // 뉴스기사는 올해 발행분만, 링크와 함께 받는다
       const YEAR = new Date().getFullYear();
       const newsRule = chosen.includes("news") ? `
@@ -900,7 +929,7 @@ ${lines}
     }
     function renderHistory() {
       const arr = loadHistory();
-      historyCardEl.style.display = arr.length ? "block" : "none";
+      historyEmptyEl.style.display = arr.length ? "none" : "block";
       historyListEl.innerHTML = arr.map((r) => {
         const d = new Date(r.ts);
         const ds = isNaN(d.getTime()) ? "" :
@@ -1107,12 +1136,112 @@ ${lines}
       kwStatusEl.textContent = `주제를 '${e.target.textContent}'(으)로 바꿨어요.`;
     });
 
+    // --- AI 문서 생성(품의서·계획서·설문) : 보고서 맥락을 그대로 활용 ---
+    // 예산 계산기에 값이 있으면 문서에 참고 예산으로 함께 넣어준다
+    function budgetSummaryText() {
+      const { hc, hrs, rate, mat, venue } = readBudgetInputs();
+      const total = rate * hrs + mat * hc + venue;
+      if (total <= 0) return "";
+      return `참고용 예산(이 도구 계산): 강사료 ${won(rate * hrs)}, 교재·운영비 ${won(mat * hc)}, 장소·기타 ${won(venue)}, 총 ${won(total)} (인원 ${hc}명·${hrs}시간 기준). 이 수치를 반영해줘.`;
+    }
+    docApprovalBtn.addEventListener("click", () => askFollowup(
+      `위 조사 내용을 바탕으로 사내 결재용 '교육 품의서' 초안을 작성해줘. ${budgetSummaryText()}
+형식: 제목, '기안 목적' 2~3줄, 그리고 교육명/목적/대상/인원/일정/장소/예산/기대효과를 2열 마크다운 표로. 마지막 줄에 결재란 안내(담당–팀장–부서장). 확인 안 된 값은 [기재 필요]로 표시.`,
+      "📋 교육 품의서 초안"
+    ));
+    docPlanBtn.addEventListener("click", () => askFollowup(
+      `위 조사 내용을 바탕으로 '교육 운영 계획서'를 작성해줘. ${budgetSummaryText()}
+구성: ## 1. 배경·목적 / ## 2. 교육 대상 / ## 3. 커리큘럼(표) / ## 4. 운영 일정(표) / ## 5. 운영 방법(장소·형식·준비물) / ## 6. 예산 / ## 7. 평가 방법(KPI). 각 항목은 핵심 불릿 위주로 간결하게.`,
+      "🗂 교육 운영 계획서"
+    ));
+    docSurveyBtn.addEventListener("click", () => askFollowup(
+      `이 교육에 맞는 설문 문항을 만들어줘. 두 부분으로 나눠서:
+## 사전 수요조사 설문 — 응답자 현황·니즈·기대 파악 문항 6~8개(객관식·리커트·주관식 혼합)
+## 사후 만족도 설문 — 만족도·이해도·현업 적용도·개선점 문항 6~8개(리커트 5점 척도 위주, 주관식 1~2개 포함)
+각 문항은 번호 목록으로, 객관식 보기는 a) b) c) 형태로 함께 적어줘.`,
+      "📝 설문 문항(사전·사후)"
+    ));
+
+    // --- 결과 공유 링크: 보고서를 URL 해시(#r=)에 담아 백엔드 없이 공유 ---
+    const b64encode = (s) => btoa(unescape(encodeURIComponent(s)));
+    const b64decode = (b) => decodeURIComponent(escape(atob(b)));
+    shareBtn.addEventListener("click", async () => {
+      if (!lastText) return;
+      const payload = JSON.stringify({ t: lastTopic, x: lastText, c: lastCites, f: followupLog });
+      const enc = encodeURIComponent(b64encode(payload));
+      // 링크가 너무 길면 메신저 등에서 잘릴 수 있으니 한도 초과 시 안내
+      if (enc.length > 16000) {
+        alert("보고서가 길어 링크로 만들기 어려워요. Word/PDF 저장이나 .md 파일 공유를 이용해 주세요.");
+        return;
+      }
+      const url = location.origin + location.pathname + "#r=" + enc;
+      try {
+        await navigator.clipboard.writeText(url);
+        shareBtn.textContent = "링크 복사됨 ✓";
+        setTimeout(() => (shareBtn.textContent = "🔗 공유 링크 복사"), 1600);
+      } catch (_) { prompt("이 링크를 복사해 공유하세요:", url); }
+    });
+    function loadSharedReport() {
+      const m = (location.hash || "").match(/[#&]r=([^&]+)/);
+      if (!m) return;
+      try {
+        const data = JSON.parse(b64decode(decodeURIComponent(m[1])));
+        finalizeReport(data.x || "", data.c || [], data.t || "공유된 보고서", "", false);
+        conversation = [userTurn(`[공유된 보고서] ${data.t}\n\n${data.x}`), modelTurn(data.x || "")];
+        if (Array.isArray(data.f)) data.f.forEach((qa) => {
+          const div = document.createElement("div");
+          div.className = "qa";
+          div.innerHTML = `<div class="q">${escapeHtml(qa.q)}</div><div class="a">${renderMarkdown(qa.a || "")}</div>`;
+          followupEl.appendChild(div);
+          followupLog.push(qa);
+          conversation.push(userTurn(qa.q), modelTurn(qa.a || ""));
+        });
+        statusEl.textContent = "🔗 공유된 보고서를 보는 중 (내 키를 넣으면 이어서 질문도 가능)";
+        reportEl.scrollIntoView({ behavior: "smooth", block: "start" });
+      } catch (_) { /* 깨진 링크는 무시 */ }
+    }
+
+    // --- 이전 기록 내보내기 / 가져오기(JSON) ---
+    historyExportBtn.addEventListener("click", () => {
+      const arr = loadHistory();
+      if (!arr.length) { alert("내보낼 기록이 없습니다."); return; }
+      const d = new Date();
+      const stamp = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`;
+      downloadFile(`교육조사기록_${stamp}.json`, JSON.stringify(arr, null, 2), "application/json;charset=utf-8");
+    });
+    historyImportBtn.addEventListener("click", () => historyImportFileEl.click());
+    historyImportFileEl.addEventListener("change", () => {
+      const file = historyImportFileEl.files && historyImportFileEl.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          // 우리가 내보낸 JSON엔 BOM이 붙으므로 앞 BOM 제거 후 파싱
+          const imported = JSON.parse(String(reader.result).replace(/^﻿/, ""));
+          if (!Array.isArray(imported)) throw new Error("형식이 올바르지 않습니다.");
+          const byId = new Map();
+          [...imported, ...loadHistory()].forEach((r) => {
+            if (r && r.id != null && r.text && !byId.has(String(r.id))) byId.set(String(r.id), r);
+          });
+          const merged = Array.from(byId.values())
+            .sort((a, b) => (Number(b.id) || 0) - (Number(a.id) || 0))
+            .slice(0, 20);
+          localStorage.setItem(HISTORY_KEY, JSON.stringify(merged));
+          renderHistory();
+          alert(`${imported.length}건을 불러왔어요. (중복 제외, 최근 20건 유지)`);
+        } catch (e) { alert("가져오기 실패: " + e.message); }
+        historyImportFileEl.value = "";
+      };
+      reader.readAsText(file);
+    });
+
     // --- 초기화 ---
     applyTheme(localStorage.getItem("edu_theme") || "light");
     refreshLogoPreview();
     renderPresetOptions();
     renderHistory();
     computeBudget();
+    loadSharedReport();
   </script>
 </body>
 </html>
