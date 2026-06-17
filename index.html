@@ -116,8 +116,8 @@
     #report a { color: var(--accent); }
     #report strong { font-weight: 700; }
     /* 커리큘럼 등 표 형태 */
-    #report table.tbl { width: 100%; border-collapse: collapse; margin: 4px 0; font-size: 13.5px; }
-    #report table.tbl th, #report table.tbl td { border: 1px solid var(--table-line); padding: 6px 8px; text-align: left; vertical-align: top; }
+    #report table.tbl { width: 100%; border-collapse: collapse; margin: 4px 0; font-size: 12px; }
+    #report table.tbl th, #report table.tbl td { border: 1px solid var(--table-line); padding: 5px 7px; text-align: left; vertical-align: top; line-height: 1.45; }
     #report table.tbl thead th { background: var(--table-head); font-weight: 700; }
 
     /* 가독성 보조용 간단 막대 그래프 (제안 시간 배분) */
@@ -637,8 +637,8 @@
 - '대표 커리큘럼 구성' 항목은 불릿 대신 아래 마크다운 표로 써줘. 모듈마다 한 줄씩, 5~7개 모듈 정도로.
 | 모듈명 | 세부 학습 내용(다루는 소주제) | 학습 목표 | 교육 형태 | 시간 |
 | --- | --- | --- | --- | --- |
-| AI 기초 이해 | 생성형 AI 작동 원리 / 주요 도구 비교 / 업무 적용 사례 | AI 개념을 이해하고 어디에 쓸지 판단 | 강의 | 30분 |
-- '세부 학습 내용' 칸에는 그 모듈에서 실제로 다루는 구체적 소주제를 2~3개, ' / '로 구분해서 적어줘. "기초 학습" 같은 막연한 표현 말고 구체적으로.
+| AI 기초 이해 | · 생성형 AI 작동 원리<br>· 주요 도구 비교<br>· 업무 적용 사례 | AI 개념을 이해하고 어디에 쓸지 판단 | 강의 | 30분 |
+- '세부 학습 내용' 칸에는 그 모듈에서 실제로 다루는 구체적 소주제를 2~3개 적되, 각 소주제는 '· '로 시작하고 소주제 사이는 <br> 태그로 줄바꿈해줘(예: \`· 소주제1<br>· 소주제2\`). 슬래시(/)로 나열하지 말 것. "기초 학습" 같은 막연한 표현 말고 구체적으로.
 - '학습 목표' 칸에는 그 모듈을 마치면 무엇을 할 수 있게 되는지 한 줄로.
 - 교육 형태는 강의 / 실습 / 워크숍 / 토론 중에서 고르고, 시간은 분 또는 시간 단위로 적어줘.` : "";
       // 뉴스기사는 올해 발행분만, 링크와 함께 받는다
@@ -692,6 +692,8 @@ ${lines}
     function inline(s) {
       return s
         .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+        // 표 셀 안 줄바꿈 허용: 모델이 쓴 <br>만 실제 줄바꿈으로 되살린다(다른 태그는 escape된 채 유지).
+        .replace(/&lt;br\s*\/?&gt;/gi, "<br>")
         // 모델이 쓴 링크는 없는 페이지일 때가 많아 클릭 링크로 만들지 않고 제목 텍스트만 남긴다.
         // 실제 클릭 가능한 링크는 아래 '검색 출처'(구글이 반환한 검증된 URL)에서만 제공한다.
         .replace(/\[(.+?)\]\((https?:\/\/[^\s)]+)\)/g, "$1");
