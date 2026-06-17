@@ -1,0 +1,7 @@
+# 이 폴더는 GitHub Pages 배포 레포(edu-research-tool)에 연결돼 있음.
+# 웹사이트에 올라가야 하는 파일만 화이트리스트로 추적하고,
+# 강의자료(.md)·PRD·.skill·.claude 등 내부 파일은 전부 무시 → GitHub에 안 올라감.
+/*
+!/.gitignore
+!/index.html
+!/HANDOFF.md
