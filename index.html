@@ -22,11 +22,12 @@
       padding: 20px; margin-bottom: 16px;
     }
     label.field { display: block; font-weight: 600; font-size: 14px; margin: 12px 0 6px; }
-    input[type="text"], input[type="password"], select {
+    input[type="text"], input[type="password"], select, textarea {
       width: 100%; padding: 10px 12px; font-size: 15px;
       border: 1px solid var(--line); border-radius: 8px; font-family: inherit;
       background: #fffdf8;
     }
+    textarea { resize: vertical; min-height: 70px; line-height: 1.5; }
     .row { display: flex; gap: 12px; }
     .row > div { flex: 1; }
     button {
@@ -224,6 +225,10 @@
         </div>
       </div>
 
+      <label class="field" for="custom">추가 요청사항 (자유 입력, 선택)</label>
+      <textarea id="custom" placeholder="예: ESG 관점도 함께 다뤄줘 / 경쟁사 A사 사례를 꼭 포함 / 예산은 1천만원 이내 기준으로"></textarea>
+      <div class="hint">위 옵션으로 표현하기 어려운 요청을 자유롭게 적어 주세요. 적은 내용이 조사에 함께 반영됩니다.</div>
+
       <button id="run">조사하기</button>
       <div id="status"></div>
       <div class="hint">웹 검색을 사용하므로 10~40초 걸릴 수 있어요.</div>
@@ -249,6 +254,7 @@
     const apiKeyEl = $("apiKey"), topicEl = $("topic"), industryEl = $("industry");
     const scopeEl = $("scope"), depthEl = $("depth"), outtypeEl = $("outtype");
     const periodEl = $("period"), sizeEl = $("size"), levelEl = $("level"), scaleEl = $("scale");
+    const customEl = $("custom");
     const reportEl = $("report"), sourcesEl = $("sources"), statusEl = $("status"), printHeadEl = $("printHead");
     const runBtn = $("run"), copyBtn = $("copy"), printBtn = $("print"), checksEl = $("checks");
 
@@ -381,6 +387,9 @@
       if (LEVEL_TEXT[levelEl.value]) filters.push(`교육 대상은 ${LEVEL_TEXT[levelEl.value]} 기준으로 맞춰서.`);
       if (SCALE_TEXT[scaleEl.value]) filters.push(`교육 규모는 ${SCALE_TEXT[scaleEl.value]} 기준으로.`);
       const filterBlock = filters.length ? `\n추가 조건:\n- ${filters.join("\n- ")}` : "";
+      // 사용자가 자유롭게 적은 요청 — 위 옵션과 충돌하면 이쪽을 우선
+      const custom = customEl.value.trim();
+      const customBlock = custom ? `\n[사용자 추가 요청 — 위 조건과 충돌하면 이 요청을 우선해서 반영]\n${custom}` : "";
       return `너는 기업 교육 기획을 돕는 리서처야. 조사 주제: '${topic}'.${ctx}
 웹 검색으로 최신 정보를 확인한 뒤, 아래 항목을 조사해서 보고서로 정리해줘.
 
@@ -388,7 +397,7 @@ ${lines}
 
 출력 타입: ${OUTTYPE_TEXT[outtypeEl.value]}
 조사 범위: ${SCOPE_TEXT[scopeEl.value]}
-분량: ${DEPTH_TEXT[depthEl.value]}${filterBlock}
+분량: ${DEPTH_TEXT[depthEl.value]}${filterBlock}${customBlock}
 
 [출력 형식 — 반드시 지킬 것]
 - 모든 내용은 짧은 불릿("- ")으로만. 줄글 문단은 절대 쓰지 마.
