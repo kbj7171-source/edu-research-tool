@@ -85,6 +85,16 @@
     /* 표지 로고 미리보기 */
     #logoPreview { max-height: 44px; margin-top: 8px; display: none; border: 1px solid var(--line); border-radius: 6px; padding: 4px; background: #fff; }
 
+    /* --- 보고서 섹션 메뉴: 스크롤 대신 탭처럼 골라보기 --- */
+    .reportnav { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 14px; }
+    .reportnav .tabbtn {
+      background: var(--card); color: var(--sub); border: 1px solid var(--line); border-radius: 999px;
+      padding: 6px 14px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap;
+    }
+    .reportnav .tabbtn:hover { border-color: var(--accent); color: var(--accent); }
+    .reportnav .tabbtn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+    #report > .sec.hidden, #report > .chart.hidden { display: none; }
+
     /* --- 보고서: 웹 대시보드처럼 카드(칸)로 분리 --- */
     #report {
       font-size: 15px; color: var(--text);
@@ -271,6 +281,8 @@
       #report > .sec, #report > .chart {
         box-shadow: none; margin-bottom: 12px; break-inside: avoid;
       }
+      /* 화면에서는 메뉴로 한 섹션만 보여도, 인쇄·PDF는 항상 전체 섹션 포함 */
+      #report > .sec.hidden, #report > .chart.hidden { display: block !important; }
     }
 
     /* --- 모바일: 좁은 화면에서 두 칸 배치를 한 칸으로 --- */
@@ -456,6 +468,7 @@
       <div id="printHead"></div>
 
       <label class="field no-print">결과</label>
+      <div id="reportNav" class="no-print reportnav"></div>
       <div id="report"><span class="muted">아직 결과가 없습니다.</span></div>
       <div id="sources"></div>
 
@@ -568,6 +581,7 @@
     const periodEl = $("period"), sizeEl = $("size"), levelEl = $("level"), scaleEl = $("scale");
     const customEl = $("custom");
     const reportEl = $("report"), sourcesEl = $("sources"), statusEl = $("status"), printHeadEl = $("printHead");
+    const reportNavEl = $("reportNav");
     const runBtn = $("run"), copyBtn = $("copy"), printBtn = $("print"), checksEl = $("checks");
     const followupEl = $("followup"), resultToolsEl = $("resultTools");
     const dlMdBtn = $("dlMd"), dlDocBtn = $("dlDoc"), slideBtn = $("slide"), shareBtn = $("shareBtn");
@@ -919,6 +933,29 @@ ${lines}
         `<div class="hint">발행일은 검색 API가 일관되게 제공하지 않습니다. 필요한 경우 본문(뉴스 항목)에 표기됩니다.</div>`;
     }
 
+    // 보고서를 스크롤 대신 섹션별 메뉴(탭)로 골라볼 수 있게 구성
+    function buildReportNav() {
+      const secs = Array.from(reportEl.children).filter(
+        (el) => el.classList.contains("sec") || el.classList.contains("chart")
+      );
+      if (secs.length <= 1) { reportNavEl.innerHTML = ""; secs.forEach((el) => el.classList.remove("hidden")); return; }
+      const labelOf = (el) => {
+        const t = el.querySelector("h3, .chart-title");
+        return (t ? t.textContent : "섹션").replace(/^\d+\.\s*/, "");
+      };
+      const setActive = (i) => {
+        secs.forEach((el, idx) => el.classList.toggle("hidden", i !== -1 && idx !== i));
+        reportNavEl.querySelectorAll(".tabbtn").forEach((b) => b.classList.toggle("active", +b.dataset.i === i));
+      };
+      reportNavEl.innerHTML =
+        secs.map((el, i) => `<button type="button" class="tabbtn" data-i="${i}">${escapeHtml(labelOf(el))}</button>`).join("") +
+        `<button type="button" class="tabbtn" data-i="-1">🗂 전체보기</button>`;
+      reportNavEl.querySelectorAll(".tabbtn").forEach((btn) =>
+        btn.addEventListener("click", () => setActive(+btn.dataset.i))
+      );
+      setActive(0);
+    }
+
     // 본문 텍스트 → 보고서 카드 렌더 + 표지/출처/도구 노출 (조사·기록불러오기 공통)
     function finalizeReport(text, cites, topic, industry, save) {
       lastText = text; lastCites = cites || []; lastTopic = topic; lastIndustry = industry || "";
@@ -928,6 +965,7 @@ ${lines}
       const cm = text.match(/```\s*시간배분\s*\n([\s\S]*?)```/);
       if (cm) { chartHtml = renderChart(cm[1]); body = text.replace(cm[0], "").trim(); }
       reportEl.innerHTML = text ? (renderMarkdown(body) + chartHtml) : "(빈 응답)";
+      buildReportNav();
       printHeadEl.innerHTML = buildCoverHtml(topic);
       renderSources(lastCites);
       resultToolsEl.style.display = text ? "block" : "none";
