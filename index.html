@@ -67,25 +67,15 @@
       display: flex; justify-content: space-between; align-items: flex-start; gap: 12px;
       padding-bottom: 18px; margin-bottom: 6px; border-bottom: 1px solid var(--soft-line);
     }
-    .brand { display: flex; align-items: center; gap: 14px; }
-    .brand-logo {
-      height: 24px; width: auto; display: block; flex: 0 0 auto;
-      background: var(--card); padding: 9px 14px; border-radius: 12px;
-      border: 1px solid var(--soft-line); box-shadow: var(--shadow-sm);
-    }
+    .brand-logo { height: 30px; width: auto; display: block; margin-bottom: 10px; }
     /* 로고 글자가 검정이라 다크모드에선 흰 박스를 깔아 항상 보이게 */
-    :root[data-theme="dark"] .brand-logo { background: #fff; box-sizing: content-box; }
-    h1 {
-      display: flex; align-items: center; flex-wrap: wrap; gap: 9px;
-      font-size: 22px; font-weight: 900; letter-spacing: -.5px; margin: 0 0 4px;
+    :root[data-theme="dark"] .brand-logo {
+      background: #fff; padding: 5px 9px; border-radius: 8px; box-sizing: content-box;
     }
-    .brand-name {
+    h1 {
+      font-size: 22px; font-weight: 900; letter-spacing: -.5px; margin: 0 0 4px;
       background: linear-gradient(90deg, var(--text), var(--accent-2));
       -webkit-background-clip: text; background-clip: text; color: transparent;
-    }
-    .brand-tag {
-      font-size: 11.5px; font-weight: 700; letter-spacing: .02em; color: var(--accent);
-      background: var(--soft); padding: 4px 10px; border-radius: 999px; white-space: nowrap;
     }
     .sub { color: var(--sub); font-size: 14px; margin: 0 0 20px; }
     .card {
@@ -359,8 +349,8 @@
       width: 100%; max-width: 420px; background: var(--card); border: 1px solid var(--line);
       border-radius: 20px; padding: 32px; box-shadow: var(--shadow); text-align: center;
     }
-    .gate-card .brand-logo { margin: 0 auto 16px; }
-    .gate-card h1 { font-size: 19px; justify-content: center; }
+    .gate-card .brand-logo { margin: 0 auto 14px; }
+    .gate-card h1 { font-size: 20px; }
     .gate-card .sub { margin: 0 0 18px; }
     .gate-card label.field { text-align: left; }
     .gate-card .warn { text-align: left; }
@@ -466,7 +456,7 @@
   <div id="gateScreen" class="gate-screen">
     <div class="gate-card">
       <img src="01_ITCEN_Logo_Basic.png" alt="ITCEN" class="brand-logo" />
-      <h1><span class="brand-name">ITCEN VisionCenter</span> <span class="brand-tag">교육기획 AI Agent</span></h1>
+      <h1>ITCEN VisionCenter 교육기획 AI Agent</h1>
       <p class="sub">시작하려면 Gemini API 키를 입력하세요.</p>
       <label class="field" for="apiKey">Gemini API 키</label>
       <input type="password" id="apiKey" placeholder="AIza..." autocomplete="off" />
@@ -481,12 +471,10 @@
 
   <div class="wrap" id="appMain" style="display:none;">
     <div class="topbar no-print">
-      <div class="brand">
+      <div>
         <img src="01_ITCEN_Logo_Basic.png" alt="ITCEN" class="brand-logo" />
-        <div>
-          <h1><span class="brand-name">ITCEN VisionCenter</span> <span class="brand-tag">교육기획 AI Agent</span></h1>
-          <p class="sub" style="margin-bottom:0;">조사할 항목·범위·분량을 골라서, 내 Gemini가 웹 검색으로 정리합니다.</p>
-        </div>
+        <h1>ITCEN VisionCenter 교육기획 AI Agent</h1>
+        <p class="sub" style="margin-bottom:0;">조사할 항목·범위·분량을 골라서, 내 Gemini가 웹 검색으로 정리합니다.</p>
       </div>
       <div class="minirow" style="margin-top:2px; flex:0 0 auto;">
         <button id="guideBtn" class="btn-sm">❓ 사용 가이드</button>
