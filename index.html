@@ -223,8 +223,9 @@
     .minirow { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; }
     .minirow select { width: auto; flex: 1 1 160px; padding: 8px 10px; font-size: 13px; }
     .btn-sm {
-      margin: 0; padding: 10px 16px; font-size: 13px; font-weight: 600;
+      display: inline-block; margin: 0; padding: 10px 16px; font-size: 13px; font-weight: 600;
       background: var(--card); color: var(--accent); border: 1px solid var(--accent); border-radius: 999px; cursor: pointer;
+      text-decoration: none;
       box-shadow: none; transition: background .12s, color .12s, transform .1s, box-shadow .12s;
     }
     .btn-sm:hover { background: var(--soft); transform: translateY(-1px); box-shadow: var(--shadow-sm); }
@@ -388,6 +389,19 @@
       color: #fff; background: linear-gradient(180deg, var(--accent), var(--accent-2));
       border: none; border-radius: 18px; cursor: pointer;
     }
+
+    /* 검색 중 팝업: 스피너 + 돌아가는 문구 + 연출용 진행률 바 */
+    .search-modal-card { max-width: 360px; text-align: center; padding: 32px 28px; }
+    .search-spinner {
+      width: 44px; height: 44px; margin: 0 auto 18px; border-radius: 50%;
+      border: 4px solid var(--soft-line); border-top-color: var(--accent);
+      animation: search-spin 0.8s linear infinite;
+    }
+    @keyframes search-spin { to { transform: rotate(360deg); } }
+    .search-modal-msg { font-size: 14.5px; font-weight: 600; color: var(--text); min-height: 40px; display: flex; align-items: center; justify-content: center; }
+    .search-progress { background: var(--soft-line); border-radius: 999px; height: 8px; overflow: hidden; margin-top: 16px; }
+    .search-progress-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--accent), var(--accent-2)); transition: width .25s ease; }
+    .search-modal-pct { font-size: 12px; color: var(--muted); margin-top: 6px; font-weight: 700; }
 
     /* 인쇄 헤더는 화면에선 숨기고 인쇄할 때만 보이게 */
     #printHead { display: none; }
@@ -751,6 +765,16 @@
         <button id="guideDone" class="solid-btn">시작하기</button>
       </div>
     </div>
+
+    <!-- 검색 중 표시: 재미있는 문구가 돌아가는 가짜(연출용) 진행률 팝업 -->
+    <div id="searchModal" class="modal-overlay no-print" style="display:none;">
+      <div class="modal-card search-modal-card">
+        <div class="search-spinner"></div>
+        <div id="searchModalMsg" class="search-modal-msg">시작하는 중…</div>
+        <div class="search-progress"><div id="searchModalBar" class="search-progress-fill"></div></div>
+        <div id="searchModalPct" class="search-modal-pct">0%</div>
+      </div>
+    </div>
   </div>
 
   <script>
@@ -807,6 +831,46 @@
     // 혼잡(과부하) 시 순서대로 시도할 모델 목록. 이름이 바뀌면 여기만 고치면 됩니다.
     const MODELS = ["gemini-3.8-flash", "gemini-2.5-flash"];
     const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+    // --- 검색 중 팝업: 실제 진행률은 알 수 없어서(스트리밍 총 길이를 모름) 90%까지만
+    // 점점 느려지며 채우는 '연출용' 진행률 + 재미있는 문구를 돌아가며 보여준다 ---
+    const FUN_SEARCH_MESSAGES = [
+      "AI가 웹을 헤엄치는 중… 🏊",
+      "여러 사이트 문을 두드리는 중… 🚪",
+      "쓸만한 정보만 건지는 중… 🎣",
+      "너무 오래된 정보는 걸러내는 중… 🧹",
+      "출처를 꼼꼼히 확인하는 중… 🔍",
+      "그럴듯한 표로 정리하는 중… 📊",
+      "커피 내리는 시간만큼 걸려요… ☕",
+      "AI가 문장을 다듬는 중… ✍️",
+      "거의 다 왔어요, 조금만 더… 🏁",
+    ];
+    let searchModalBarTimer = null, searchModalMsgTimer = null, searchModalProgress = 0;
+    function openSearchModal() {
+      const modal = $("searchModal"), bar = $("searchModalBar"), pct = $("searchModalPct"), msg = $("searchModalMsg");
+      searchModalProgress = 0;
+      bar.style.width = "0%"; pct.textContent = "0%";
+      let msgIdx = 0;
+      msg.textContent = FUN_SEARCH_MESSAGES[0];
+      modal.style.display = "flex";
+      clearInterval(searchModalMsgTimer); clearInterval(searchModalBarTimer);
+      searchModalMsgTimer = setInterval(() => {
+        msgIdx = (msgIdx + 1) % FUN_SEARCH_MESSAGES.length;
+        msg.textContent = FUN_SEARCH_MESSAGES[msgIdx];
+      }, 2200);
+      searchModalBarTimer = setInterval(() => {
+        searchModalProgress += (90 - searchModalProgress) * 0.06 + 0.4;
+        if (searchModalProgress > 90) searchModalProgress = 90;
+        const v = Math.round(searchModalProgress);
+        bar.style.width = v + "%"; pct.textContent = v + "%";
+      }, 220);
+    }
+    function closeSearchModal() {
+      clearInterval(searchModalBarTimer); clearInterval(searchModalMsgTimer);
+      const modal = $("searchModal"), bar = $("searchModalBar"), pct = $("searchModalPct");
+      bar.style.width = "100%"; pct.textContent = "100%";
+      setTimeout(() => { modal.style.display = "none"; }, 260);
+    }
 
     // 일시적 오류(혼잡/과부하/요청량 초과)는 잠시 후 재시도하면 풀린다
     function makeError(detail, status) {
@@ -1183,7 +1247,8 @@ ${lines}
       resultToolsEl.style.display = "none";
       sourcesEl.innerHTML = ""; followupEl.innerHTML = "";
       reportEl.innerHTML = '<span class="muted">조사 중…</span>';
-      statusEl.textContent = "구글 검색으로 조사하고 있어요 ⏳";
+      statusEl.textContent = "";
+      openSearchModal();
 
       try {
         const prompt = buildPrompt(topic, industry);
@@ -1200,6 +1265,7 @@ ${lines}
         statusEl.textContent = "";
       } finally {
         runBtn.disabled = false;
+        closeSearchModal();
       }
     }
     runBtn.addEventListener("click", research);
@@ -1605,7 +1671,7 @@ ${lines}
           <div class="instr-curr">${curriculumList(c.curriculum)}</div>
           <div class="instr-note">💬 ${escapeHtml(c.comment)}</div>
           <div class="instr-foot">
-            <a href="${searchLink}" target="_blank" rel="noopener">🔗 확인하기</a>
+            <a href="${searchLink}" target="_blank" rel="noopener" class="btn-sm">🔗 확인하기</a>
             <button type="button" class="btn-sm instr-save-btn" data-idx="${i}">⭐ 담기</button>
           </div>
         </div>`;
@@ -1639,7 +1705,8 @@ ${lines}
       instrSearchBtn.disabled = true;
       instrResultsEl.innerHTML = '<span class="muted">찾는 중…</span>';
       instrSourcesEl.innerHTML = "";
-      instrStatusEl.textContent = "신뢰할 수 있는 플랫폼 위주로 검색하고 있어요 ⏳";
+      instrStatusEl.textContent = "";
+      openSearchModal();
       try {
         const { text, cites } = await runGemini(apiKey, [userTurn(buildInstructorPrompt(topic))], null, true, instrStatusEl);
         renderInstructorResults(text, topic);
@@ -1650,6 +1717,7 @@ ${lines}
         instrStatusEl.textContent = "오류가 났어요: " + err.message;
       } finally {
         instrSearchBtn.disabled = false;
+        closeSearchModal();
       }
     }
     instrSearchBtn.addEventListener("click", searchInstructors);
