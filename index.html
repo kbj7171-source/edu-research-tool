@@ -225,17 +225,24 @@
     .section-title::before { content: ""; width: 3px; height: 13px; border-radius: 2px; background: var(--accent); display: inline-block; }
 
     /* 이전 기록 목록 */
-    #historyList { list-style: none; margin: 8px 0 0; padding: 0; }
-    #historyList li { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-top: 1px solid var(--soft-line); }
-    #historyList li:first-child { border-top: none; }
-    #historyList .h-load {
+    #historyList, .saved-list { list-style: none; margin: 8px 0 0; padding: 0; }
+    #historyList li, .saved-list li { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-top: 1px solid var(--soft-line); }
+    #historyList li:first-child, .saved-list li:first-child { border-top: none; }
+    #historyList .h-load, .saved-list .h-load {
       flex: 1; text-align: left; background: none; border: none; color: var(--text); cursor: pointer;
       padding: 0; margin: 0; box-shadow: none; font-size: 14px; font-family: inherit;
     }
-    #historyList .h-load:hover { color: var(--accent); text-decoration: underline; filter: none; transform: none; }
-    #historyList .h-date { color: var(--muted); font-size: 12px; }
-    #historyList .h-del { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 15px; padding: 0 4px; margin: 0; box-shadow: none; }
-    #historyList .h-del:hover { color: var(--accent); }
+    #historyList .h-load:hover, .saved-list .h-load:hover { color: var(--accent); text-decoration: underline; filter: none; transform: none; }
+    #historyList .h-date, .saved-list .h-date { color: var(--muted); font-size: 12px; }
+    #historyList .h-del, .saved-list .h-del { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 15px; padding: 0 4px; margin: 0; box-shadow: none; }
+    #historyList .h-del:hover, .saved-list .h-del:hover { color: var(--accent); }
+    /* 강사 검색 결과 표 전용 */
+    .instr-tbl td { vertical-align: top; }
+    .platform-badge {
+      display: inline-block; background: var(--chip-bg); color: var(--sub); font-size: 11px;
+      padding: 2px 8px; border-radius: 999px; white-space: nowrap;
+    }
+    .instr-save-btn[disabled] { opacity: .55; cursor: default; }
 
     /* 예산 계산기 · ROI 표 (같은 스타일 공유) */
     #budget table.budget, #roi table.budget { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 14px; }
@@ -607,6 +614,25 @@
       <div id="roiRationale" class="hint" style="margin-top:8px;"></div>
     </div>
 
+    <!-- 강사·강의 찾기: 신뢰 가능한 플랫폼·교육업체 위주로 검색해 비교 -->
+    <div class="card no-print" id="instructorCard">
+      <div class="section-title">🎤 강사·강의 찾기</div>
+      <div class="hint" style="margin-bottom:10px;">
+        멀티캠퍼스·인프런 같은 강사 매칭 플랫폼과 교육업체 위주로 후보를 찾아 비교합니다.
+        결과는 AI가 판단한 신뢰도 순으로 정렬되고, 최종 확인은 꼭 링크로 직접 해주세요.
+      </div>
+      <label class="field" for="instrTopic">강의 주제 키워드</label>
+      <input type="text" id="instrTopic" placeholder="예: AI 리더십 교육" />
+      <button id="instrSearchBtn">강사·강의 찾기</button>
+      <div id="instrStatus" class="hint"></div>
+      <div id="instrResults"></div>
+      <div id="instrSources"></div>
+
+      <div class="section-title" style="margin-top:20px;">⭐ 저장함</div>
+      <div id="instrSaved"></div>
+      <div id="instrSavedEmpty" class="hint" style="display:none;">아직 담아둔 강사·강의가 없습니다. 검색 결과에서 ⭐ 담기를 눌러보세요.</div>
+    </div>
+
     <!-- 이전 조사 기록(이 브라우저에만 저장) -->
     <div class="card no-print" id="historyCard">
       <div class="minirow" style="justify-content:space-between;">
@@ -666,6 +692,9 @@
     const kwBtn = $("kwBtn"), kwStatusEl = $("kwStatus"), kwChipsEl = $("kwChips");
     const companyEl = $("company"), authorEl = $("author");
     const logoEl = $("logo"), logoPreviewEl = $("logoPreview"), logoClearBtn = $("logoClear");
+    const instrTopicEl = $("instrTopic"), instrSearchBtn = $("instrSearchBtn"), instrStatusEl = $("instrStatus");
+    const instrResultsEl = $("instrResults"), instrSourcesEl = $("instrSources");
+    const instrSavedEl = $("instrSaved"), instrSavedEmptyEl = $("instrSavedEmpty");
 
     apiKeyEl.value = localStorage.getItem("gemini_api_key") || "";
     apiKeyEl.addEventListener("change", () =>
@@ -739,7 +768,7 @@
     }
 
     // 혼잡하면 잠시 기다렸다 재시도하고, 그래도 안 되면 다음 모델로 자동 전환
-    async function runGemini(apiKey, contents, onText, useSearch = true) {
+    async function runGemini(apiKey, contents, onText, useSearch = true, statusTarget = statusEl) {
       let lastErr = null;
       for (const model of MODELS) {
         for (let attempt = 1; attempt <= 2; attempt++) {
@@ -747,7 +776,7 @@
           catch (e) {
             lastErr = e;
             if (!e.retryable) throw e; // 진짜 오류(키 오류 등)는 즉시 표시
-            statusEl.textContent = `지금 혼잡해서 다시 시도 중… (${model} ${attempt}/2)`;
+            if (statusTarget) statusTarget.textContent = `지금 혼잡해서 다시 시도 중… (${model} ${attempt}/2)`;
             await sleep(1500 * attempt);
           }
         }
@@ -1403,6 +1432,159 @@ ${lines}
       }
     }
     rEstimateBtn.addEventListener("click", estimateRoi);
+
+    // --- 강사·강의 찾기 ---
+    // 신뢰 가능한 강사 매칭 플랫폼·교육업체 위주로 검색해 표로 비교. 링크는 지어내지 않고
+    // 제목+강사명+플랫폼으로 구글 검색 링크를 만들어 '사실확인'용으로만 제공(뉴스 항목과 같은 방식).
+    const INSTR_SAVED_KEY = "edu_instr_saved_v1";
+    let lastInstrCandidates = []; // 이번 검색의 후보 배열(담기 버튼이 인덱스로 참조)
+
+    function buildInstructorPrompt(topic) {
+      return `너는 기업교육 강사·강의 소싱을 돕는 리서처야. 조사 주제: '${topic}'.
+아래처럼 신뢰할 수 있는 국내 강사 매칭 플랫폼·교육 운영 업체 위주로 웹 검색해서, 이 주제에 맞는 강의·강사 후보를 찾아줘.
+참고 플랫폼·업체 예시(이 목록에 없어도 신뢰할 만한 곳이면 포함 가능): 멀티캠퍼스, 인프런, 탈잉, 클래스101, 러닝스퀘어, 사람인HRD, 휴넷, 한국능률협회(KMA), 한국생산성본부(KPC), 데이원컴퍼니.
+
+[출력 형식 — 반드시 지킬 것]
+- 결과는 아래 마크다운 표 하나로만 출력해. 다른 설명·인사말 없이 표만.
+- 표는 다음 6개 열로, 찾은 만큼 전부 포함(개수 제한 없음):
+| 강의명 | 강사명·소속 | 커리큘럼 요약 | 단가 | AI 한줄평 | 플랫폼 |
+| --- | --- | --- | --- | --- | --- |
+- 행 순서는 네가 판단한 인기도·신뢰도가 높은 순으로 정렬해줘. 판단 기준: 커리큘럼이 구체적인지, 최신 트렌드를 반영했는지, 가격 대비 알려진 강사·과정인지, 후기·평판이 검색되는지.
+- 'AI 한줄평' 칸에는 왜 그 순위인지 판단 근거를 한 줄로 짧게 적어.
+- '단가' 칸은 실제로 확인된 금액이 있을 때만 쓰고, 확인 안 되면 반드시 "가격 문의 필요"라고만 써. 절대 지어내지 마.
+- '커리큘럼 요약' 칸에는 셀 안에 <br>로 줄바꿈해서 소주제 2~3개를 적어도 좋아.
+- 실제 검색으로 확인되지 않는 강의·강사는 절대 포함하지 마. 확실하지 않으면 아예 빼.
+- 본문에는 URL을 쓰지 마. 실제 링크는 시스템이 '검색 출처'로 따로 보여줘.`;
+    }
+
+    // 마크다운 텍스트에서 첫 번째 표만 뽑아 행 배열로 변환(헤더·구분선 제외)
+    function parseFirstTable(md) {
+      const lines = md.split(/\r?\n/).map((l) => l.trim()).filter((l) => /^\|.*\|$/.test(l));
+      if (!lines.length) return [];
+      const cells = (row) => row.replace(/^\||\|$/g, "").split("|").map((c) => c.trim());
+      const isSep = (row) => cells(row).every((c) => /^:?-{2,}:?$/.test(c));
+      const body = lines.length >= 2 && isSep(lines[1]) ? lines.slice(2) : lines.slice(1);
+      return body.filter((r) => !isSep(r)).map(cells);
+    }
+
+    function renderInstructorResults(md, topic) {
+      const rows = parseFirstTable(md);
+      lastInstrCandidates = rows.map((r) => ({
+        title: r[0] || "", person: r[1] || "", curriculum: r[2] || "",
+        price: r[3] || "", comment: r[4] || "", platform: r[5] || "",
+      }));
+      if (!lastInstrCandidates.length) {
+        instrResultsEl.innerHTML = `<div class="hint">검색 결과가 없어요. 주제를 조금 더 구체적으로 적어보세요.</div>`;
+        return;
+      }
+      const curriculumHtml = (s) => escapeHtml(s).replace(/&lt;br\s*\/?&gt;/gi, "<br>");
+      const rowsHtml = lastInstrCandidates.map((c, i) => {
+        const q = encodeURIComponent(`${c.title} ${c.person} ${c.platform}`.trim());
+        const searchLink = `https://www.google.com/search?q=${q}`;
+        return `<tr>
+          <td>${escapeHtml(c.title)}</td>
+          <td>${escapeHtml(c.person)}</td>
+          <td>${curriculumHtml(c.curriculum)}</td>
+          <td>${escapeHtml(c.price)}</td>
+          <td>${escapeHtml(c.comment)}</td>
+          <td><span class="platform-badge">${escapeHtml(c.platform)}</span></td>
+          <td><a href="${searchLink}" target="_blank" rel="noopener">🔗 확인</a></td>
+          <td><button type="button" class="btn-sm instr-save-btn" data-idx="${i}">⭐ 담기</button></td>
+        </tr>`;
+      }).join("");
+      instrResultsEl.innerHTML =
+        `<table class="tbl instr-tbl"><thead><tr>` +
+        `<th>강의명</th><th>강사명·소속</th><th>커리큘럼 요약</th><th>단가</th><th>AI 한줄평</th><th>플랫폼</th><th>확인</th><th></th>` +
+        `</tr></thead><tbody>${rowsHtml}</tbody></table>`;
+      instrResultsEl.querySelectorAll(".instr-save-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          saveInstrCandidate(topic, lastInstrCandidates[+btn.dataset.idx]);
+          btn.textContent = "✓ 담음"; btn.disabled = true;
+        });
+      });
+    }
+
+    function renderInstrSources(cites) {
+      const seen = new Set();
+      const links = (cites || []).filter((c) => c.uri && !seen.has(c.uri) && seen.add(c.uri));
+      if (!links.length) { instrSourcesEl.innerHTML = ""; return; }
+      instrSourcesEl.innerHTML = "<b>🔗 검색 출처 (참고용)</b><ol>" +
+        links.map((w) => {
+          const host = hostOf(w.uri);
+          return `<li><a href="${w.uri}" target="_blank" rel="noopener">${escapeHtml(w.title || w.uri)}</a>` +
+            (host ? ` <span class="host">— ${escapeHtml(host)}</span>` : "") + "</li>";
+        }).join("") + "</ol>";
+    }
+
+    async function searchInstructors() {
+      const apiKey = apiKeyEl.value.trim();
+      const topic = instrTopicEl.value.trim();
+      if (!apiKey) { alert("Gemini API 키를 입력해 주세요."); return; }
+      if (!topic) { alert("강의 주제 키워드를 입력해 주세요."); return; }
+      instrSearchBtn.disabled = true;
+      instrResultsEl.innerHTML = '<span class="muted">찾는 중…</span>';
+      instrSourcesEl.innerHTML = "";
+      instrStatusEl.textContent = "신뢰할 수 있는 플랫폼 위주로 검색하고 있어요 ⏳";
+      try {
+        const { text, cites } = await runGemini(apiKey, [userTurn(buildInstructorPrompt(topic))], null, true, instrStatusEl);
+        renderInstructorResults(text, topic);
+        renderInstrSources(cites);
+        instrStatusEl.textContent = "";
+      } catch (err) {
+        instrResultsEl.innerHTML = "";
+        instrStatusEl.textContent = "오류가 났어요: " + err.message;
+      } finally {
+        instrSearchBtn.disabled = false;
+      }
+    }
+    instrSearchBtn.addEventListener("click", searchInstructors);
+
+    // 강사 저장함: 검색 키워드(카테고리)별로 묶어서 localStorage에 저장
+    function loadInstrSaved() { try { return JSON.parse(localStorage.getItem(INSTR_SAVED_KEY)) || {}; } catch (_) { return {}; } }
+    function writeInstrSaved(data) { localStorage.setItem(INSTR_SAVED_KEY, JSON.stringify(data)); }
+    function saveInstrCandidate(topic, candidate) {
+      const data = loadInstrSaved();
+      const key = topic.trim() || "(주제 없음)";
+      if (!data[key]) data[key] = [];
+      data[key].push({ ...candidate, savedAt: Date.now() });
+      writeInstrSaved(data);
+      renderInstrSaved();
+    }
+    function deleteInstrCandidate(category, idx) {
+      const data = loadInstrSaved();
+      if (!data[category]) return;
+      data[category].splice(idx, 1);
+      if (!data[category].length) delete data[category];
+      writeInstrSaved(data);
+      renderInstrSaved();
+    }
+    function renderInstrSaved() {
+      const data = loadInstrSaved();
+      const cats = Object.keys(data);
+      if (!cats.length) { instrSavedEl.innerHTML = ""; instrSavedEmptyEl.style.display = "block"; return; }
+      instrSavedEmptyEl.style.display = "none";
+      instrSavedEl.innerHTML = cats.map((cat) => {
+        const rows = data[cat].map((c, i) => {
+          const q = encodeURIComponent(`${c.title} ${c.person} ${c.platform}`.trim());
+          return `<li>
+            <span class="h-load" style="cursor:default;">
+              <b>${escapeHtml(c.title)}</b> — ${escapeHtml(c.person)}
+              <span class="hint" style="margin:0;">${escapeHtml(c.price || "")} · ${escapeHtml(c.platform || "")}</span>
+            </span>
+            <a href="https://www.google.com/search?q=${q}" target="_blank" rel="noopener" class="h-date">🔗</a>
+            <button type="button" class="h-del" data-cat="${escapeAttr(cat)}" data-i="${i}" title="삭제">✕</button>
+          </li>`;
+        }).join("");
+        return `<div class="instr-cat">
+          <div class="section-title" style="margin-top:10px;">📁 ${escapeHtml(cat)} (${data[cat].length})</div>
+          <ul class="saved-list">${rows}</ul>
+        </div>`;
+      }).join("");
+      instrSavedEl.querySelectorAll(".h-del").forEach((btn) =>
+        btn.addEventListener("click", () => deleteInstrCandidate(btn.dataset.cat, +btn.dataset.i))
+      );
+    }
+    renderInstrSaved();
 
     // --- 보고서 표지(로고·회사명·작성자) ---
     function buildCoverHtml(topic) {
