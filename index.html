@@ -262,6 +262,12 @@
       display: flex; flex-direction: column; gap: 10px;
       background: var(--input-bg); border: 1px solid var(--soft-line); border-radius: 18px; padding: 18px;
     }
+    .instr-card .instr-thumb {
+      width: 100%; aspect-ratio: 16 / 9; border-radius: 12px; overflow: hidden;
+      background: var(--table-head);
+    }
+    .instr-card .instr-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; opacity: 0; transition: opacity .25s; }
+    .instr-card .instr-thumb.loaded img { opacity: 1; }
     .instr-card .instr-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
     .instr-card .instr-title { font-size: 15px; font-weight: 800; line-height: 1.35; }
     .instr-card .instr-person { font-size: 13px; color: var(--sub); margin-top: 2px; }
@@ -1674,7 +1680,31 @@ ${lines}
       return null;
     }
 
+    // 출처 페이지의 og:image(대표 이미지)를 가져와 카드 썸네일로 씀.
+    // 브라우저에서 외부 사이트를 직접 fetch하면 대부분 CORS로 막히므로 공개 CORS 프록시를 경유.
+    // 실패(프록시 다운/타임아웃/og:image 없음)해도 조용히 null만 반환 — 썸네일 없이 카드는 정상 표시.
+    async function resolveThumbnail(pageUrl) {
+      try {
+        const proxied = "https://api.allorigins.win/raw?url=" + encodeURIComponent(pageUrl);
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), 6000);
+        const res = await fetch(proxied, { signal: ctrl.signal });
+        clearTimeout(timer);
+        if (!res.ok) return null;
+        const html = await res.text();
+        const doc = new DOMParser().parseFromString(html, "text/html");
+        const meta = doc.querySelector('meta[property="og:image"], meta[name="twitter:image"]');
+        const src = meta && meta.getAttribute("content");
+        if (!src) return null;
+        return new URL(src, pageUrl).href; // 상대경로면 원본 페이지 기준으로 절대경로화
+      } catch (_) {
+        return null; // 네트워크 오류·타임아웃·파싱 실패 등은 전부 '썸네일 없음' 처리
+      }
+    }
+    let instrRenderGen = 0; // 검색을 다시 실행했을 때 이전 검색의 썸네일이 새 결과에 잘못 붙는 것 방지
+
     function renderInstructorResults(md, topic, rawText, cites, supports) {
+      const myGen = ++instrRenderGen;
       // groundingSupports의 바이트 오프셋과 정렬을 맞추려면 rawText(트림 전 원문) 기준으로 파싱해야 함
       const rows = parseFirstTable(rawText || md);
       lastInstrCandidates = rows.map((row) => {
@@ -1701,6 +1731,7 @@ ${lines}
         const href = c.link || `https://www.google.com/search?q=${q}`;
         const linkLabel = c.link ? "🔗 확인하기" : "🔍 검색해서 확인";
         return `<div class="instr-card">
+          ${c.link ? `<div class="instr-thumb" data-thumb-idx="${i}"></div>` : ""}
           <div class="instr-head">
             <div>
               <div class="instr-title">${escapeHtml(c.title)}</div>
@@ -1725,6 +1756,22 @@ ${lines}
         btn.addEventListener("click", () => {
           saveInstrCandidate(topic, lastInstrCandidates[+btn.dataset.idx]);
           btn.textContent = "✓ 담음"; btn.disabled = true;
+        });
+      });
+      // 실제 출처가 있는 카드만, 백그라운드로 썸네일을 하나씩 붙여준다(느려도 결과 표시는 안 막음)
+      lastInstrCandidates.forEach((c, i) => {
+        if (!c.link) return;
+        resolveThumbnail(c.link).then((imgUrl) => {
+          if (myGen !== instrRenderGen) return; // 다른 검색으로 이미 교체됐으면 무시
+          const holder = instrResultsEl.querySelector(`.instr-thumb[data-thumb-idx="${i}"]`);
+          if (!holder) return;
+          if (!imgUrl) { holder.remove(); return; } // 못 찾았으면 빈 회색 박스 대신 아예 제거
+          const img = document.createElement("img");
+          img.alt = ""; img.loading = "lazy"; img.referrerPolicy = "no-referrer";
+          img.onload = () => { holder.classList.add("loaded"); };
+          img.onerror = () => { holder.remove(); };
+          img.src = imgUrl;
+          holder.appendChild(img);
         });
       });
     }
