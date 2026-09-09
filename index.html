@@ -54,14 +54,14 @@
       background: #fff; padding: 5px 9px; border-radius: 8px; box-sizing: content-box;
     }
     h1 {
-      font-size: 22px; font-weight: 800; letter-spacing: -.3px; margin: 0 0 4px;
+      font-size: 22px; font-weight: 900; letter-spacing: -.5px; margin: 0 0 4px;
       background: linear-gradient(90deg, var(--text), var(--accent-2));
       -webkit-background-clip: text; background-clip: text; color: transparent;
     }
     .sub { color: var(--sub); font-size: 14px; margin: 0 0 20px; }
     .card {
-      background: var(--card); border: 1px solid var(--line); border-radius: 18px;
-      padding: 22px; margin-bottom: 16px; box-shadow: var(--shadow);
+      background: var(--card); border: 1px solid var(--line); border-radius: 20px;
+      padding: 24px; margin-bottom: 16px; box-shadow: var(--shadow);
       transition: box-shadow .2s, transform .2s;
     }
     label.field { display: block; font-weight: 600; font-size: 14px; margin: 12px 0 6px; }
@@ -79,9 +79,9 @@
     .row { display: flex; gap: 12px; }
     .row > div { flex: 1; }
     button {
-      margin-top: 16px; padding: 13px 20px; font-size: 15px; font-weight: 700;
+      margin-top: 16px; padding: 14px 24px; font-size: 15px; font-weight: 700;
       color: #fff; background: linear-gradient(180deg, var(--accent), var(--accent-2));
-      border: none; border-radius: 12px; cursor: pointer;
+      border: none; border-radius: 18px; cursor: pointer;
       box-shadow: 0 6px 16px -6px color-mix(in srgb, var(--accent) 55%, transparent);
       transition: transform .12s, box-shadow .12s, filter .12s;
     }
@@ -181,7 +181,10 @@
     /* 커리큘럼 등 표 형태 */
     #report table.tbl { width: 100%; border-collapse: collapse; margin: 4px 0; font-size: 12px; }
     #report table.tbl th, #report table.tbl td { border: 1px solid var(--table-line); padding: 5px 7px; text-align: left; vertical-align: top; line-height: 1.45; }
-    #report table.tbl thead th { background: var(--table-head); font-weight: 700; }
+    #report table.tbl thead th {
+      background: var(--table-head); color: var(--sub); font-weight: 700;
+      font-size: 11px; text-transform: uppercase; letter-spacing: .04em;
+    }
 
     /* 가독성 보조용 간단 막대 그래프 (제안 시간 배분) */
     #report .chart .chart-title { font-weight: 700; color: var(--accent); margin-bottom: 10px; }
@@ -201,8 +204,8 @@
     .minirow { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; }
     .minirow select { width: auto; flex: 1 1 160px; padding: 8px 10px; font-size: 13px; }
     .btn-sm {
-      margin: 0; padding: 9px 14px; font-size: 13px; font-weight: 600;
-      background: var(--card); color: var(--accent); border: 1px solid var(--accent); border-radius: 10px; cursor: pointer;
+      margin: 0; padding: 10px 16px; font-size: 13px; font-weight: 600;
+      background: var(--card); color: var(--accent); border: 1px solid var(--accent); border-radius: 999px; cursor: pointer;
       box-shadow: none; transition: background .12s, color .12s, transform .1s, box-shadow .12s;
     }
     .btn-sm:hover { background: var(--soft); transform: translateY(-1px); box-shadow: var(--shadow-sm); }
@@ -238,6 +241,10 @@
     #budget table.budget, #roi table.budget { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 14px; }
     #budget table.budget th, #budget table.budget td,
     #roi table.budget th, #roi table.budget td { border: 1px solid var(--table-line); padding: 8px 10px; }
+    #budget table.budget thead th, #roi table.budget thead th {
+      background: var(--table-head); color: var(--sub);
+      font-size: 11px; text-transform: uppercase; letter-spacing: .04em;
+    }
     #budget table.budget td.num, #budget table.budget th.num,
     #roi table.budget td.num, #roi table.budget th.num { text-align: right; }
     #budget table.budget tfoot td, #roi table.budget tfoot td { font-weight: 700; background: var(--soft); }
@@ -248,7 +255,7 @@
     /* 토스식 금액 입력 박스: 라벨 위 + 큰 숫자 + 단위 우측, 박스 전체가 포커스 영역 */
     .bfield {
       display: block; background: var(--input-bg); border: 1.5px solid var(--line);
-      border-radius: 14px; padding: 10px 14px; cursor: text;
+      border-radius: 16px; padding: 10px 14px; cursor: text;
       transition: border-color .15s, background .15s;
     }
     .bfield:focus-within { border-color: var(--accent); background: var(--card); }
@@ -277,7 +284,10 @@
     #followup .qa .a li { margin: 4px 0; }
     #followup .qa .a table.tbl { width: 100%; border-collapse: collapse; font-size: 13.5px; margin: 8px 0; }
     #followup .qa .a table.tbl th, #followup .qa .a table.tbl td { border: 1px solid var(--table-line); padding: 6px 8px; text-align: left; vertical-align: top; }
-    #followup .qa .a table.tbl thead th { background: var(--table-head); font-weight: 700; }
+    #followup .qa .a table.tbl thead th {
+      background: var(--table-head); color: var(--sub); font-weight: 700;
+      font-size: 11px; text-transform: uppercase; letter-spacing: .04em;
+    }
 
     /* 첫 사용 가이드 모달 */
     .modal-overlay {
@@ -310,7 +320,7 @@
     .solid-btn {
       width: 100%; margin: 0; padding: 14px; font-size: 15px; font-weight: 700;
       color: #fff; background: linear-gradient(180deg, var(--accent), var(--accent-2));
-      border: none; border-radius: 12px; cursor: pointer;
+      border: none; border-radius: 18px; cursor: pointer;
     }
 
     /* 인쇄 헤더는 화면에선 숨기고 인쇄할 때만 보이게 */
