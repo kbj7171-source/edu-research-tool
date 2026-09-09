@@ -579,7 +579,7 @@
     );
 
     // 혼잡(과부하) 시 순서대로 시도할 모델 목록. 이름이 바뀌면 여기만 고치면 됩니다.
-    const MODELS = ["gemini-2.5-flash", "gemini-2.0-flash"];
+    const MODELS = ["gemini-3.8-flash", "gemini-2.5-flash"];
     const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
     // 일시적 오류(혼잡/과부하/요청량 초과)는 잠시 후 재시도하면 풀린다
