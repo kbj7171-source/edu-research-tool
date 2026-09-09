@@ -443,46 +443,19 @@
       <div class="chips" id="kwChips"></div>
     </div>
 
-    <!-- 인쇄/PDF/Word 표지에 들어갈 회사명·작성자·로고 (한 번 설정하면 브라우저에 저장됨) -->
-    <div class="card no-print">
-      <div class="section-title">📄 보고서 표지 설정 (인쇄·PDF·Word용)</div>
-      <div class="row">
-        <div>
-          <label class="field" for="company">회사·부서명</label>
-          <input type="text" id="company" placeholder="예: 아이티센글로벌 VisionCenter" />
-        </div>
-        <div>
-          <label class="field" for="author">작성자</label>
-          <input type="text" id="author" placeholder="예: 홍길동" />
-        </div>
-      </div>
-      <label class="field" for="logo">로고 이미지 (선택)</label>
-      <input type="file" id="logo" accept="image/*" />
-      <img id="logoPreview" alt="로고 미리보기" />
-      <div class="minirow">
-        <button id="logoClear" class="btn-sm">로고 제거</button>
-        <span class="hint" style="margin:0;">로고·회사명·작성자는 이 브라우저에만 저장되며, 보고서 맨 위(표지)에 표시됩니다.</span>
-      </div>
-    </div>
-
     <!-- 사용자가 필요에 맞게 조사 범위를 고르는 칸 -->
     <div class="card card-wide no-print">
-      <!-- 자주 쓰는 옵션 조합을 저장/불러오기 -->
-      <div class="section-title">조건 프리셋</div>
-      <div class="minirow">
-        <select id="presetSel"><option value="">저장된 프리셋 선택…</option></select>
-        <button id="presetSave" class="btn-sm">현재 설정 저장</button>
-        <button id="presetDel" class="btn-sm">삭제</button>
-      </div>
-      <div class="hint">지금 고른 항목·옵션 조합을 이름 붙여 저장해두고 다음에 한 번에 불러옵니다.</div>
-
-      <label class="field" style="margin-top:16px;">조사할 항목 (필요한 것만 체크)</label>
-      <div class="checks" id="checks"></div>
-      <div class="toolbar">
-        <a id="selectAll">전체 선택</a><a id="selectNone">전체 해제</a>
-      </div>
-
       <div class="row">
+        <div>
+          <!-- 자주 쓰는 옵션 조합을 저장/불러오기 -->
+          <div class="section-title">조건 프리셋</div>
+          <div class="minirow">
+            <select id="presetSel"><option value="">저장된 프리셋 선택…</option></select>
+            <button id="presetSave" class="btn-sm">현재 설정 저장</button>
+            <button id="presetDel" class="btn-sm">삭제</button>
+          </div>
+          <div class="hint">지금 고른 항목·옵션 조합을 이름 붙여 저장해두고 다음에 한 번에 불러옵니다.</div>
+        </div>
         <div>
           <label class="field" for="outtype">출력 타입 (용도)</label>
           <select id="outtype">
@@ -492,6 +465,12 @@
             <option value="research">상세 리서치 리포트</option>
           </select>
         </div>
+      </div>
+
+      <label class="field" style="margin-top:16px;">조사할 항목 (필요한 것만 체크)</label>
+      <div class="checks" id="checks"></div>
+      <div class="toolbar">
+        <a id="selectAll">전체 선택</a><a id="selectNone">전체 해제</a>
       </div>
 
       <div class="row">
@@ -657,6 +636,28 @@
       <input type="file" id="historyImportFile" accept="application/json,.json" style="display:none;" />
       <ul id="historyList"></ul>
       <div id="historyEmpty" class="hint" style="display:none;">아직 저장된 기록이 없습니다. 조사를 실행하면 자동 저장돼요.</div>
+    </div>
+
+    <!-- 인쇄/PDF/Word 표지에 들어갈 회사명·작성자·로고 (한 번 설정하면 브라우저에 저장됨) -->
+    <div class="card no-print">
+      <div class="section-title">📄 보고서 표지 설정 (인쇄·PDF·Word용)</div>
+      <div class="row">
+        <div>
+          <label class="field" for="company">회사·부서명</label>
+          <input type="text" id="company" placeholder="예: 아이티센글로벌 VisionCenter" />
+        </div>
+        <div>
+          <label class="field" for="author">작성자</label>
+          <input type="text" id="author" placeholder="예: 홍길동" />
+        </div>
+      </div>
+      <label class="field" for="logo">로고 이미지 (선택)</label>
+      <input type="file" id="logo" accept="image/*" />
+      <img id="logoPreview" alt="로고 미리보기" />
+      <div class="minirow">
+        <button id="logoClear" class="btn-sm">로고 제거</button>
+        <span class="hint" style="margin:0;">로고·회사명·작성자는 이 브라우저에만 저장되며, 보고서 맨 위(표지)에 표시됩니다.</span>
+      </div>
     </div>
     </div><!-- /panel-research -->
 
