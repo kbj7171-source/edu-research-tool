@@ -255,11 +255,33 @@
     #historyList .h-date, .saved-list .h-date { color: var(--muted); font-size: 12px; }
     #historyList .h-del, .saved-list .h-del { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 15px; padding: 0 4px; margin: 0; box-shadow: none; }
     #historyList .h-del:hover, .saved-list .h-del:hover { color: var(--accent); }
-    /* 강사 검색 결과 표 전용 */
-    .instr-tbl td { vertical-align: top; }
+    /* 강사·강의 검색 결과: 표 대신 카드 그리드로 (한 후보 = 카드 한 장) */
+    .instr-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; margin-top: 10px; }
+    .instr-card {
+      display: flex; flex-direction: column; gap: 10px;
+      background: var(--input-bg); border: 1px solid var(--soft-line); border-radius: 18px; padding: 18px;
+    }
+    .instr-card .instr-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+    .instr-card .instr-title { font-size: 15px; font-weight: 800; line-height: 1.35; }
+    .instr-card .instr-person { font-size: 13px; color: var(--sub); margin-top: 2px; }
     .platform-badge {
-      display: inline-block; background: var(--chip-bg); color: var(--sub); font-size: 11px;
-      padding: 2px 8px; border-radius: 999px; white-space: nowrap;
+      flex: 0 0 auto; display: inline-block; background: var(--chip-bg); color: var(--sub); font-size: 11px;
+      font-weight: 700; padding: 3px 10px; border-radius: 999px; white-space: nowrap;
+    }
+    .instr-card .instr-stats { display: flex; gap: 8px; }
+    .instr-card .instr-stat {
+      flex: 1; min-width: 0; background: var(--card); border: 1px solid var(--soft-line);
+      border-radius: 12px; padding: 8px 10px;
+    }
+    .instr-card .instr-stat .k { font-size: 10.5px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+    .instr-card .instr-stat .v { font-size: 14px; font-weight: 700; margin-top: 2px; }
+    .instr-card .instr-curr { font-size: 13px; color: var(--text); }
+    .instr-card .instr-curr ul { margin: 2px 0 0; padding-left: 18px; }
+    .instr-card .instr-curr li { margin: 2px 0; }
+    .instr-card .instr-note { background: var(--soft); border-radius: 10px; padding: 9px 11px; font-size: 12.5px; color: var(--sub); line-height: 1.5; }
+    .instr-card .instr-foot {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-top: auto; padding-top: 8px; border-top: 1px dashed var(--soft-line);
     }
     .instr-save-btn[disabled] { opacity: .55; cursor: default; }
 
@@ -314,6 +336,24 @@
       background: var(--table-head); color: var(--sub); font-weight: 700;
       font-size: 11px; text-transform: uppercase; letter-spacing: .04em;
     }
+
+    /* 초기 진입 화면(API 키 게이트): 키 없으면 이 화면만, 있으면 본문만 보임 */
+    .gate-screen {
+      min-height: 100vh; display: flex; align-items: center; justify-content: center;
+      padding: 24px; background:
+        radial-gradient(640px 320px at 12% -8%, color-mix(in srgb, var(--accent) 8%, transparent), transparent 60%),
+        var(--bg);
+    }
+    .gate-card {
+      width: 100%; max-width: 420px; background: var(--card); border: 1px solid var(--line);
+      border-radius: 20px; padding: 32px; box-shadow: var(--shadow); text-align: center;
+    }
+    .gate-card .brand-logo { margin: 0 auto 14px; }
+    .gate-card h1 { font-size: 20px; }
+    .gate-card .sub { margin: 0 0 18px; }
+    .gate-card label.field { text-align: left; }
+    .gate-card .warn { text-align: left; }
+    .gate-card button { width: 100%; }
 
     /* 첫 사용 가이드 모달 */
     .modal-overlay {
@@ -398,7 +438,24 @@
   </style>
 </head>
 <body>
-  <div class="wrap">
+  <!-- 초기 진입 화면: Gemini API 키를 입력해야 앱 화면이 나타남(저장된 키가 있으면 자동 통과) -->
+  <div id="gateScreen" class="gate-screen">
+    <div class="gate-card">
+      <img src="01_ITCEN_Logo_Basic.png" alt="ITCEN" class="brand-logo" />
+      <h1>ITCEN VisionCenter 교육기획 AI Agent</h1>
+      <p class="sub">시작하려면 Gemini API 키를 입력하세요.</p>
+      <label class="field" for="apiKey">Gemini API 키</label>
+      <input type="password" id="apiKey" placeholder="AIza..." autocomplete="off" />
+      <div class="warn">
+        Google AI Studio(aistudio.google.com)에서 무료 발급. 키는 이 브라우저에만 저장되며
+        우리 서버로 전송되지 않습니다. 이 파일을 인터넷에 올리거나 공유하지 마세요.
+      </div>
+      <button id="gateEnterBtn">시작하기</button>
+      <div id="gateStatus" class="hint"></div>
+    </div>
+  </div>
+
+  <div class="wrap" id="appMain" style="display:none;">
     <div class="topbar no-print">
       <div>
         <img src="01_ITCEN_Logo_Basic.png" alt="ITCEN" class="brand-logo" />
@@ -407,6 +464,7 @@
       </div>
       <div class="minirow" style="margin-top:2px; flex:0 0 auto;">
         <button id="guideBtn" class="btn-sm">❓ 사용 가이드</button>
+        <button id="changeKeyBtn" class="btn-sm" title="Gemini API 키 변경">🔑 키 변경</button>
         <button id="themeToggle" class="btn-sm" title="밝게/어둡게 전환">🌙 다크</button>
       </div>
     </div>
@@ -417,15 +475,6 @@
     </div>
 
     <div id="panel-research" class="tabpanel">
-    <!-- API 키: 코드에 박지 않고 사용자가 직접 입력 → 브라우저 안에만 보관 -->
-    <div class="card no-print">
-      <label class="field" for="apiKey">Gemini API 키</label>
-      <input type="password" id="apiKey" placeholder="AIza..." autocomplete="off" />
-      <div class="warn">
-        Google AI Studio(aistudio.google.com)에서 무료 발급. 키는 이 브라우저에만 저장되며
-        우리 서버로 전송되지 않습니다. 이 파일을 인터넷에 올리거나 공유하지 마세요.
-      </div>
-    </div>
 
     <div class="card no-print">
       <div class="row">
@@ -738,6 +787,22 @@
     apiKeyEl.addEventListener("change", () =>
       localStorage.setItem("gemini_api_key", apiKeyEl.value.trim())
     );
+
+    // --- 초기 진입 화면(API 키 게이트): 저장된 키가 있으면 바로 본문, 없으면 이 화면만 ---
+    const gateScreenEl = $("gateScreen"), appMainEl = $("appMain");
+    const gateEnterBtn = $("gateEnterBtn"), gateStatusEl = $("gateStatus"), changeKeyBtn = $("changeKeyBtn");
+    function passGate() { gateScreenEl.style.display = "none"; appMainEl.style.display = ""; }
+    function showGate() { gateScreenEl.style.display = "flex"; appMainEl.style.display = "none"; apiKeyEl.focus(); }
+    function enterGate() {
+      const v = apiKeyEl.value.trim();
+      if (!v) { gateStatusEl.textContent = "Gemini API 키를 입력해 주세요."; return; }
+      localStorage.setItem("gemini_api_key", v);
+      passGate();
+    }
+    gateEnterBtn.addEventListener("click", enterGate);
+    apiKeyEl.addEventListener("keydown", (e) => { if (e.key === "Enter" && gateScreenEl.style.display !== "none") enterGate(); });
+    changeKeyBtn.addEventListener("click", showGate);
+    if (localStorage.getItem("gemini_api_key")) passGate(); else showGate();
 
     // 혼잡(과부하) 시 순서대로 시도할 모델 목록. 이름이 바뀌면 여기만 고치면 됩니다.
     const MODELS = ["gemini-3.8-flash", "gemini-2.5-flash"];
@@ -1484,10 +1549,11 @@ ${lines}
 
 [출력 형식 — 반드시 지킬 것]
 - 결과는 아래 마크다운 표 하나로만 출력해. 다른 설명·인사말 없이 표만.
-- 표는 다음 6개 열로, 찾은 만큼 전부 포함(개수 제한 없음):
-| 강의명 | 강사명·소속 | 커리큘럼 요약 | 단가 | AI 한줄평 | 플랫폼 |
-| --- | --- | --- | --- | --- | --- |
+- 표는 다음 7개 열로, 찾은 만큼 전부 포함(개수 제한 없음):
+| 강의명 | 강사명·소속 | 커리큘럼 요약 | 교육 시간 | 단가 | AI 한줄평 | 플랫폼 |
+| --- | --- | --- | --- | --- | --- | --- |
 - 행 순서는 네가 판단한 인기도·신뢰도가 높은 순으로 정렬해줘. 판단 기준: 커리큘럼이 구체적인지, 최신 트렌드를 반영했는지, 가격 대비 알려진 강사·과정인지, 후기·평판이 검색되는지.
+- '교육 시간' 칸에는 보통 몇 시간짜리 교육인지 적어(예: "3시간", "1일(7시간)", "2일 과정"). 확인 안 되면 "확인 안 됨"이라고만 써.
 - 'AI 한줄평' 칸에는 왜 그 순위인지 판단 근거를 한 줄로 짧게 적어.
 - '단가' 칸은 실제로 확인된 금액이 있을 때만 쓰고, 확인 안 되면 반드시 "가격 문의 필요"라고만 써. 절대 지어내지 마.
 - '커리큘럼 요약' 칸에는 셀 안에 <br>로 줄바꿈해서 소주제 2~3개를 적어도 좋아.
@@ -1508,32 +1574,43 @@ ${lines}
     function renderInstructorResults(md, topic) {
       const rows = parseFirstTable(md);
       lastInstrCandidates = rows.map((r) => ({
-        title: r[0] || "", person: r[1] || "", curriculum: r[2] || "",
-        price: r[3] || "", comment: r[4] || "", platform: r[5] || "",
+        title: r[0] || "", person: r[1] || "", curriculum: r[2] || "", duration: r[3] || "",
+        price: r[4] || "", comment: r[5] || "", platform: r[6] || "",
       }));
       if (!lastInstrCandidates.length) {
         instrResultsEl.innerHTML = `<div class="hint">검색 결과가 없어요. 주제를 조금 더 구체적으로 적어보세요.</div>`;
         return;
       }
-      const curriculumHtml = (s) => escapeHtml(s).replace(/&lt;br\s*\/?&gt;/gi, "<br>");
-      const rowsHtml = lastInstrCandidates.map((c, i) => {
+      // "· 소주제1<br>· 소주제2" 형태의 커리큘럼 요약을 불릿 리스트로
+      const curriculumList = (s) => {
+        const items = escapeHtml(s).split(/&lt;br\s*\/?&gt;/gi)
+          .map((t) => t.replace(/^[·\-\s]+/, "").trim()).filter(Boolean);
+        return items.length ? `<ul>${items.map((t) => `<li>${t}</li>`).join("")}</ul>` : "";
+      };
+      const cardsHtml = lastInstrCandidates.map((c, i) => {
         const q = encodeURIComponent(`${c.title} ${c.person} ${c.platform}`.trim());
         const searchLink = `https://www.google.com/search?q=${q}`;
-        return `<tr>
-          <td>${escapeHtml(c.title)}</td>
-          <td>${escapeHtml(c.person)}</td>
-          <td>${curriculumHtml(c.curriculum)}</td>
-          <td>${escapeHtml(c.price)}</td>
-          <td>${escapeHtml(c.comment)}</td>
-          <td><span class="platform-badge">${escapeHtml(c.platform)}</span></td>
-          <td><a href="${searchLink}" target="_blank" rel="noopener">🔗 확인</a></td>
-          <td><button type="button" class="btn-sm instr-save-btn" data-idx="${i}">⭐ 담기</button></td>
-        </tr>`;
+        return `<div class="instr-card">
+          <div class="instr-head">
+            <div>
+              <div class="instr-title">${escapeHtml(c.title)}</div>
+              <div class="instr-person">${escapeHtml(c.person)}</div>
+            </div>
+            <span class="platform-badge">${escapeHtml(c.platform)}</span>
+          </div>
+          <div class="instr-stats">
+            <div class="instr-stat"><div class="k">교육 시간</div><div class="v">${escapeHtml(c.duration || "확인 안 됨")}</div></div>
+            <div class="instr-stat"><div class="k">단가</div><div class="v">${escapeHtml(c.price || "가격 문의 필요")}</div></div>
+          </div>
+          <div class="instr-curr">${curriculumList(c.curriculum)}</div>
+          <div class="instr-note">💬 ${escapeHtml(c.comment)}</div>
+          <div class="instr-foot">
+            <a href="${searchLink}" target="_blank" rel="noopener">🔗 확인하기</a>
+            <button type="button" class="btn-sm instr-save-btn" data-idx="${i}">⭐ 담기</button>
+          </div>
+        </div>`;
       }).join("");
-      instrResultsEl.innerHTML =
-        `<table class="tbl instr-tbl"><thead><tr>` +
-        `<th>강의명</th><th>강사명·소속</th><th>커리큘럼 요약</th><th>단가</th><th>AI 한줄평</th><th>플랫폼</th><th>확인</th><th></th>` +
-        `</tr></thead><tbody>${rowsHtml}</tbody></table>`;
+      instrResultsEl.innerHTML = `<div class="instr-grid">${cardsHtml}</div>`;
       instrResultsEl.querySelectorAll(".instr-save-btn").forEach((btn) => {
         btn.addEventListener("click", () => {
           saveInstrCandidate(topic, lastInstrCandidates[+btn.dataset.idx]);
@@ -1607,7 +1684,7 @@ ${lines}
           return `<li>
             <span class="h-load" style="cursor:default;">
               <b>${escapeHtml(c.title)}</b> — ${escapeHtml(c.person)}
-              <span class="hint" style="margin:0;">${escapeHtml(c.price || "")} · ${escapeHtml(c.platform || "")}</span>
+              <span class="hint" style="margin:0;">${escapeHtml(c.duration || "")} · ${escapeHtml(c.price || "")} · ${escapeHtml(c.platform || "")}</span>
             </span>
             <a href="https://www.google.com/search?q=${q}" target="_blank" rel="noopener" class="h-date">🔗</a>
             <button type="button" class="h-del" data-cat="${escapeAttr(cat)}" data-i="${i}" title="삭제">✕</button>
