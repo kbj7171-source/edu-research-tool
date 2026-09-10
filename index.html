@@ -1281,6 +1281,7 @@ ${lines}
       }
     }
     runBtn.addEventListener("click", research);
+    topicEl.addEventListener("keydown", (e) => { if (e.key === "Enter" && !runBtn.disabled) research(); });
 
     // --- 후속 질문(멀티턴) / 슬라이드 개요 ---
     // 생성된 '추가 문서' 블록 추적(키 → {el, entry}). 같은 버튼 다시 누르면 열고/닫기.
@@ -1765,6 +1766,7 @@ ${lines}
       }
     }
     instrSearchBtn.addEventListener("click", searchInstructors);
+    instrTopicEl.addEventListener("keydown", (e) => { if (e.key === "Enter" && !instrSearchBtn.disabled) searchInstructors(); });
 
     // 강사 저장함: 검색 키워드(카테고리)별로 묶어서 localStorage에 저장
     function loadInstrSaved() { try { return JSON.parse(localStorage.getItem(INSTR_SAVED_KEY)) || {}; } catch (_) { return {}; } }
