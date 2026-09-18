@@ -270,12 +270,13 @@
       display: flex; flex-direction: column; gap: 10px;
       background: var(--input-bg); border: 1px solid var(--soft-line); border-radius: 18px; padding: 18px;
     }
-    .instr-card .instr-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+    .instr-card .instr-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 6px 10px; }
+    .instr-card .instr-head-main { flex: 1 1 180px; min-width: 0; }
     .instr-card .instr-title { font-size: 15px; font-weight: 800; line-height: 1.35; }
     .instr-card .instr-person { font-size: 13px; color: var(--sub); margin-top: 2px; }
     .platform-badge {
-      flex: 0 0 auto; display: inline-block; background: var(--chip-bg); color: var(--sub); font-size: 11px;
-      font-weight: 700; padding: 3px 10px; border-radius: 999px; white-space: nowrap;
+      flex: 0 1 auto; display: inline-block; background: var(--chip-bg); color: var(--sub); font-size: 11px;
+      font-weight: 700; padding: 3px 10px; border-radius: 999px; white-space: normal; word-break: keep-all; max-width: 100%;
     }
     .instr-card .instr-stats { display: flex; gap: 8px; }
     .instr-card .instr-stat {
@@ -1731,7 +1732,7 @@ ${lines}
         const linkLabel = c.link ? "🔗 확인하기" : "🔍 검색해서 확인";
         return `<div class="instr-card">
           <div class="instr-head">
-            <div>
+            <div class="instr-head-main">
               <div class="instr-title">${escapeHtml(c.title)}</div>
               <div class="instr-person">${escapeHtml(c.person)}</div>
             </div>
