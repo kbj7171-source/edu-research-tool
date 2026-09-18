@@ -230,6 +230,14 @@
     }
     .btn-sm:hover { background: var(--soft); transform: translateY(-1px); box-shadow: var(--shadow-sm); }
     .btn-sm:active { transform: translateY(0); }
+    .pdf-dropzone {
+      margin-top: 8px; padding: 14px 16px; border: 1.5px dashed var(--line); border-radius: 14px;
+      background: var(--input-bg); text-align: center; cursor: pointer;
+      font-size: 13px; color: var(--hint);
+      transition: border-color .15s, background .15s, color .15s;
+    }
+    .pdf-dropzone:hover { border-color: var(--accent); color: var(--sub); }
+    .pdf-dropzone.dragover { border-color: var(--accent); background: var(--soft); color: var(--accent); }
     .btn-sm.solid {
       background: linear-gradient(180deg, var(--accent), var(--accent-2)); color: #fff; border-color: transparent;
     }
@@ -734,9 +742,11 @@
         </div>
         <label class="field" for="instrTopic">강의 주제 키워드</label>
         <input type="text" id="instrTopic" placeholder="예: AI 리더십 교육" />
-        <div class="minirow" style="margin-top:8px;">
-          <label for="instrPdf" class="btn-sm" style="cursor:pointer;">📄 기존 교재 PDF로 찾기</label>
+        <div id="instrPdfDrop" class="pdf-dropzone" tabindex="0" role="button" aria-label="교재 PDF 업로드">
+          📄 클릭하거나 기존 교재 PDF를 여기로 끌어다 놓으세요
           <input type="file" id="instrPdf" accept="application/pdf,.pdf" style="display:none;" />
+        </div>
+        <div class="minirow" style="margin-top:6px;">
           <span id="instrPdfName" class="hint" style="margin:0;"></span>
           <button id="instrPdfClear" class="btn-sm" style="display:none;">✕ 제거</button>
         </div>
@@ -810,6 +820,7 @@
     const logoEl = $("logo"), logoPreviewEl = $("logoPreview"), logoClearBtn = $("logoClear");
     const instrTopicEl = $("instrTopic"), instrSearchBtn = $("instrSearchBtn"), instrStatusEl = $("instrStatus");
     const instrPdfEl = $("instrPdf"), instrPdfNameEl = $("instrPdfName"), instrPdfClearBtn = $("instrPdfClear"), instrPdfStatusEl = $("instrPdfStatus");
+    const instrPdfDropEl = $("instrPdfDrop");
     const instrResultsEl = $("instrResults"), instrSourcesEl = $("instrSources");
     const instrSavedEl = $("instrSaved"), instrSavedEmptyEl = $("instrSavedEmpty");
 
@@ -1822,6 +1833,33 @@ ${lines}
     instrPdfEl.addEventListener("change", () => {
       const file = instrPdfEl.files && instrPdfEl.files[0];
       if (file) analyzeInstrPdf(file);
+    });
+    instrPdfDropEl.addEventListener("click", () => instrPdfEl.click());
+    instrPdfDropEl.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); instrPdfEl.click(); }
+    });
+    ["dragenter", "dragover"].forEach((evt) =>
+      instrPdfDropEl.addEventListener(evt, (e) => {
+        e.preventDefault(); e.stopPropagation();
+        instrPdfDropEl.classList.add("dragover");
+      })
+    );
+    ["dragleave", "dragend"].forEach((evt) =>
+      instrPdfDropEl.addEventListener(evt, (e) => {
+        e.preventDefault(); e.stopPropagation();
+        instrPdfDropEl.classList.remove("dragover");
+      })
+    );
+    instrPdfDropEl.addEventListener("drop", (e) => {
+      e.preventDefault(); e.stopPropagation();
+      instrPdfDropEl.classList.remove("dragover");
+      const file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+      if (!file) return;
+      if (file.type !== "application/pdf" && !/\.pdf$/i.test(file.name)) {
+        instrPdfStatusEl.textContent = "PDF 파일만 올려주세요.";
+        return;
+      }
+      analyzeInstrPdf(file);
     });
     instrPdfClearBtn.addEventListener("click", () => {
       instrPdfEl.value = "";
