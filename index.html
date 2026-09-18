@@ -734,6 +734,13 @@
         </div>
         <label class="field" for="instrTopic">강의 주제 키워드</label>
         <input type="text" id="instrTopic" placeholder="예: AI 리더십 교육" />
+        <div class="minirow" style="margin-top:8px;">
+          <label for="instrPdf" class="btn-sm" style="cursor:pointer;">📄 기존 교재 PDF로 찾기</label>
+          <input type="file" id="instrPdf" accept="application/pdf,.pdf" style="display:none;" />
+          <span id="instrPdfName" class="hint" style="margin:0;"></span>
+          <button id="instrPdfClear" class="btn-sm" style="display:none;">✕ 제거</button>
+        </div>
+        <div id="instrPdfStatus" class="hint"></div>
         <button id="instrSearchBtn">강사·강의 찾기</button>
         <div id="instrStatus" class="hint"></div>
         <div id="instrResults"></div>
@@ -802,6 +809,7 @@
     const companyEl = $("company"), authorEl = $("author");
     const logoEl = $("logo"), logoPreviewEl = $("logoPreview"), logoClearBtn = $("logoClear");
     const instrTopicEl = $("instrTopic"), instrSearchBtn = $("instrSearchBtn"), instrStatusEl = $("instrStatus");
+    const instrPdfEl = $("instrPdf"), instrPdfNameEl = $("instrPdfName"), instrPdfClearBtn = $("instrPdfClear"), instrPdfStatusEl = $("instrPdfStatus");
     const instrResultsEl = $("instrResults"), instrSourcesEl = $("instrSources");
     const instrSavedEl = $("instrSaved"), instrSavedEmptyEl = $("instrSavedEmpty");
 
@@ -1623,12 +1631,21 @@ ${lines}
 
     function buildInstructorPrompt(topic) {
       return `너는 기업교육 강사·강의 소싱을 돕는 리서처야. 조사 주제: '${topic}'.
-아래처럼 신뢰할 수 있는 국내 강사 매칭 플랫폼·교육 운영 업체 위주로 웹 검색해서, 이 주제에 맞는 강의·강사 후보를 찾아줘.
-참고 플랫폼·업체 예시(이 목록에 없어도 신뢰할 만한 곳이면 포함 가능): 멀티캠퍼스, 인프런, 탈잉, 클래스101, 러닝스퀘어, 사람인HRD, 휴넷, 한국능률협회(KMA), 한국생산성본부(KPC), 데이원컴퍼니.
+신뢰할 수 있는 곳 위주로 웹 검색해서, 이 주제에 맞는 강의·강사 후보를 최대한 다양하게 찾아줘.
+
+[검색 범위 — 아래 카테고리를 모두 고려해서 폭넓게 찾을 것]
+- 기업교육·강사 매칭 전문 플랫폼: 멀티캠퍼스, 러닝스퀘어, 사람인HRD, 데이원컴퍼니 등
+- 온라인 강의 플랫폼: 인프런, 클래스101, 탈잉, 패스트캠퍼스, 코드스테이츠 등
+- 교육 운영·연수 전문기업: 휴넷, 크레듀, 에스티유니타스, 그 외 기업연수 대행사
+- 협회·공공/준공공기관: 한국능률협회(KMA), 한국생산성본부(KPC), 대한상공회의소, 각 지역 인재개발원, 산업별 협회 연수원
+- 대학 평생교육원·사회교육원, 폴리텍 등 직업훈련기관
+- 검증 가능한 경력·후기가 있는 프리랜서 강사(개인 홈페이지, 블로그, 강의 소개 페이지, 유튜브 강의 채널 등)
+위 예시는 참고용일 뿐 정답이 아니야. 이 목록에 없어도 이 주제와 실제로 관련된 곳이면 다 포함해. 검색을 대충 하고 익숙한 몇 곳만 반복해서 대답하지 말고, 매번 주제에 맞게 새로 검색해서 되도록 서로 다른 플랫폼·기관에 걸쳐 후보를 찾아줘(가능하면 한 플랫폼에 후보가 몰리지 않게).
+목표는 20~24개 정도의 후보를 찾는 거야. 검색을 충분히 해서 그만큼 채워봐. 다만 실제로 확인되는 후보가 그보다 적으면 억지로 채우지 말고 찾은 만큼만 내놔.
 
 [출력 형식 — 반드시 지킬 것]
 - 결과는 아래 마크다운 표 하나로만 출력해. 다른 설명·인사말 없이 표만.
-- 표는 다음 7개 열로, 찾은 만큼 전부 포함(개수 제한 없음):
+- 표는 다음 7개 열로, 위에서 말한 목표 개수만큼(찾은 만큼) 포함:
 | 강의명 | 강사명·소속 | 커리큘럼 요약 | 교육 시간 | 단가 | AI 한줄평 | 플랫폼 |
 | --- | --- | --- | --- | --- | --- | --- |
 - 행 순서는 네가 판단한 인기도·신뢰도가 높은 순으로 정렬해줘. 판단 기준: 커리큘럼이 구체적인지, 최신 트렌드를 반영했는지, 가격 대비 알려진 강사·과정인지, 후기·평판이 검색되는지.
@@ -1741,6 +1758,77 @@ ${lines}
             (host ? ` <span class="host">— ${escapeHtml(host)}</span>` : "") + "</li>";
         }).join("") + "</ol>";
     }
+
+    // --- 교재 PDF 업로드로 주제 자동 추출 ---
+    // PDF는 텍스트로 뽑지 않고 파일 그대로 Gemini에 전달(멀티모달) — 표·이미지가 섞인 교재도 그대로 읽힘.
+    const INSTR_PDF_MAX_BYTES = 15 * 1024 * 1024; // base64 인코딩 시 부풀어 Gemini 요청 한도(약 20MB)에 걸리지 않도록 여유를 둠
+
+    function fileToBase64(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result).split(",")[1] || "");
+        reader.onerror = () => reject(reader.error);
+        reader.readAsDataURL(file);
+      });
+    }
+
+    function buildPdfAnalysisPrompt() {
+      return `첨부한 PDF는 우리 회사가 예전에 진행한 사내 교육 자료(교재)야. 내용을 읽고 아래 형식으로만 출력해, 다른 설명은 하지 마.
+키워드: (이 교재가 다루는 핵심 주제를 강사·강의 검색에 쓸 수 있는 짧은 키워드 구문 하나로)
+요약: (이 교재가 다루는 내용을 2~3문장으로 요약)`;
+    }
+
+    function parsePdfAnalysis(text) {
+      const kwMatch = text.match(/키워드\s*[:：]\s*(.+)/);
+      const sumMatch = text.match(/요약\s*[:：]\s*([\s\S]+)/);
+      return {
+        keyword: kwMatch ? kwMatch[1].trim().replace(/^["'“]|["'”]$/g, "") : "",
+        summary: sumMatch ? sumMatch[1].trim() : "",
+      };
+    }
+
+    async function analyzeInstrPdf(file) {
+      const apiKey = apiKeyEl.value.trim();
+      if (!apiKey) { alert("Gemini API 키를 입력해 주세요."); instrPdfEl.value = ""; return; }
+      if (file.size > INSTR_PDF_MAX_BYTES) {
+        instrPdfStatusEl.textContent = `파일이 너무 커요 (${(file.size / 1024 / 1024).toFixed(1)}MB). 15MB 이하 PDF로 올려주세요.`;
+        instrPdfEl.value = "";
+        return;
+      }
+      instrPdfNameEl.textContent = file.name;
+      instrPdfClearBtn.style.display = "";
+      instrPdfStatusEl.textContent = "교재 분석 중… ⏳";
+      instrSearchBtn.disabled = true;
+      try {
+        const base64 = await fileToBase64(file);
+        const content = { role: "user", parts: [
+          { text: buildPdfAnalysisPrompt() },
+          { inlineData: { mimeType: "application/pdf", data: base64 } },
+        ] };
+        const { text } = await runGemini(apiKey, [content], null, false, instrPdfStatusEl);
+        const { keyword, summary } = parsePdfAnalysis(text);
+        if (!keyword) {
+          instrPdfStatusEl.textContent = "교재에서 주제를 뽑지 못했어요. 키워드를 직접 입력해 주세요.";
+          return;
+        }
+        instrTopicEl.value = keyword;
+        instrPdfStatusEl.textContent = summary ? `📖 ${summary} — 필요하면 키워드를 수정한 뒤 '강사·강의 찾기'를 눌러주세요.` : "키워드를 채웠어요. 확인 후 '강사·강의 찾기'를 눌러주세요.";
+      } catch (err) {
+        instrPdfStatusEl.textContent = "오류가 났어요: " + err.message;
+      } finally {
+        instrSearchBtn.disabled = false;
+      }
+    }
+    instrPdfEl.addEventListener("change", () => {
+      const file = instrPdfEl.files && instrPdfEl.files[0];
+      if (file) analyzeInstrPdf(file);
+    });
+    instrPdfClearBtn.addEventListener("click", () => {
+      instrPdfEl.value = "";
+      instrPdfNameEl.textContent = "";
+      instrPdfStatusEl.textContent = "";
+      instrPdfClearBtn.style.display = "none";
+    });
 
     async function searchInstructors() {
       const apiKey = apiKeyEl.value.trim();
